@@ -10,20 +10,20 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// TestParseCompareCommand tests the compare command parsing
-func TestParseCompareCommand(t *testing.T) {
+// TestNewCompareConfig tests the compare config creation
+func TestNewCompareConfig(t *testing.T) {
 	tempDir := t.TempDir()
 
 	tests := []struct {
 		name      string
 		args      []string
 		wantError bool
-		validate  func(*Config) error
+		validate  func(CompareConfig) error
 	}{
 		{
 			name: "Valid compare command",
-			args: []string{"compare", "-repo", tempDir, "-tag1", "v1.0.0", "-tag2", "v2.0.0"},
-			validate: func(c *Config) error {
+			args: []string{"-repo", tempDir, "-tag1", "v1.0.0", "-tag2", "v2.0.0"},
+			validate: func(c CompareConfig) error {
 				if c.Command != CompareCommand {
 					return fmt.Errorf("expected command %s, got %s", CompareCommand, c.Command)
 				}
@@ -45,8 +45,8 @@ func TestParseCompareCommand(t *testing.T) {
 		},
 		{
 			name: "Valid compare command with verbose flag",
-			args: []string{"compare", "-repo", tempDir, "-tag1", "v1.0.0", "-tag2", "v2.0.0", "-v"},
-			validate: func(c *Config) error {
+			args: []string{"-repo", tempDir, "-tag1", "v1.0.0", "-tag2", "v2.0.0", "-v"},
+			validate: func(c CompareConfig) error {
 				if c.Command != CompareCommand {
 					return fmt.Errorf("expected command %s, got %s", CompareCommand, c.Command)
 				}
@@ -70,7 +70,7 @@ func TestParseCompareCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := ParseCommand(tt.args)
+			config, err := NewCompareConfig(tt.args)
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("ParseCommand() error = nil, want error")
@@ -79,7 +79,7 @@ func TestParseCompareCommand(t *testing.T) {
 				if err != nil {
 					t.Errorf("ParseCommand() error = %v, want nil", err)
 				}
-				if config != nil && tt.validate != nil {
+				if tt.validate != nil {
 					if err := tt.validate(config); err != nil {
 						t.Errorf("Config validation failed: %v", err)
 					}
@@ -96,12 +96,12 @@ func TestConfigValidate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		config    Config
+		config    CompareConfig
 		wantError error
 	}{
 		{
 			name: "Valid configuration",
-			config: Config{
+			config: CompareConfig{
 				Command:  CompareCommand,
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
@@ -111,7 +111,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "Missing repository path",
-			config: Config{
+			config: CompareConfig{
 				Command:  CompareCommand,
 				RepoPath: "",
 				Tag1Name: "v1.0.0",
@@ -121,7 +121,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "Missing tag1 name",
-			config: Config{
+			config: CompareConfig{
 				Command:  CompareCommand,
 				RepoPath: tempDir,
 				Tag1Name: "",
@@ -131,7 +131,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "Missing tag2 name",
-			config: Config{
+			config: CompareConfig{
 				Command:  CompareCommand,
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
@@ -141,7 +141,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "Non-existent repository path",
-			config: Config{
+			config: CompareConfig{
 				Command:  CompareCommand,
 				RepoPath: "/non/existent/path",
 				Tag1Name: "v1.0.0",
@@ -151,7 +151,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			name: "All required fields missing",
-			config: Config{
+			config: CompareConfig{
 				Command:  CompareCommand,
 				RepoPath: "",
 				Tag1Name: "",
@@ -190,12 +190,12 @@ func TestConfigValidateWithRepository(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		config    Config
+		config    CompareConfig
 		wantError error
 	}{
 		{
 			name: "Both tags exist",
-			config: Config{
+			config: CompareConfig{
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v2.0.0",
@@ -204,7 +204,7 @@ func TestConfigValidateWithRepository(t *testing.T) {
 		},
 		{
 			name: "Tag1 does not exist",
-			config: Config{
+			config: CompareConfig{
 				RepoPath: tempDir,
 				Tag1Name: "v3.0.0",
 				Tag2Name: "v2.0.0",
@@ -213,7 +213,7 @@ func TestConfigValidateWithRepository(t *testing.T) {
 		},
 		{
 			name: "Tag2 does not exist",
-			config: Config{
+			config: CompareConfig{
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v3.0.0",
@@ -222,7 +222,7 @@ func TestConfigValidateWithRepository(t *testing.T) {
 		},
 		{
 			name: "Both tags do not exist",
-			config: Config{
+			config: CompareConfig{
 				RepoPath: tempDir,
 				Tag1Name: "v3.0.0",
 				Tag2Name: "v4.0.0",
@@ -231,7 +231,7 @@ func TestConfigValidateWithRepository(t *testing.T) {
 		},
 		{
 			name: "Invalid repository path",
-			config: Config{
+			config: CompareConfig{
 				RepoPath: "/non/existent/path",
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v2.0.0",
@@ -274,14 +274,14 @@ func TestConfigGetTagReference(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		config    Config
+		config    CompareConfig
 		tagName   string
 		wantTag   string
 		wantError bool
 	}{
 		{
 			name: "Find existing tag v1.0.0",
-			config: Config{
+			config: CompareConfig{
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v2.0.0",
@@ -292,7 +292,7 @@ func TestConfigGetTagReference(t *testing.T) {
 		},
 		{
 			name: "Find existing tag v2.0.0",
-			config: Config{
+			config: CompareConfig{
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v2.0.0",
@@ -303,7 +303,7 @@ func TestConfigGetTagReference(t *testing.T) {
 		},
 		{
 			name: "Tag not found",
-			config: Config{
+			config: CompareConfig{
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v2.0.0",

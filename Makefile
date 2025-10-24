@@ -20,7 +20,7 @@ clean:
 
 ## test: Run all tests
 test:
-	go test -v ./...
+	go test ./...
 
 ## fmt: Format all Go files
 fmt:
