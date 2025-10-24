@@ -32,7 +32,7 @@ func PrintVersion() {
 				}
 			case "vcs.time":
 				if t, err := time.Parse(time.RFC3339, setting.Value); err == nil {
-					commitTime = t.Format("2006-01-02 15:04:05")
+					commitTime = t.UTC().Format("2006-01-02 15:04:05 UTC")
 				}
 			case "vcs.modified":
 				modified = setting.Value == "true"

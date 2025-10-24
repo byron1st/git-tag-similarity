@@ -176,7 +176,7 @@ make build
 ```
 git-tag-similarity version v1.0.0+dirty
   Commit: cfd009b (modified)
-  Commit time: 2025-10-24 07:18:08
+  Commit time: 2025-10-24 07:18:08 UTC
   Go version: go1.25.2
   OS/Arch: darwin/arm64
 ```
