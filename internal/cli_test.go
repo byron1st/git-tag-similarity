@@ -2,12 +2,92 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/byron1st/git-tag-similarity/mocks"
 	"github.com/go-git/go-git/v5/plumbing"
 	"go.uber.org/mock/gomock"
 )
+
+// TestParseCompareCommand tests the compare command parsing
+func TestParseCompareCommand(t *testing.T) {
+	tempDir := t.TempDir()
+
+	tests := []struct {
+		name      string
+		args      []string
+		wantError bool
+		validate  func(*Config) error
+	}{
+		{
+			name: "Valid compare command",
+			args: []string{"compare", "-repo", tempDir, "-tag1", "v1.0.0", "-tag2", "v2.0.0"},
+			validate: func(c *Config) error {
+				if c.Command != CompareCommand {
+					return fmt.Errorf("expected command %s, got %s", CompareCommand, c.Command)
+				}
+				if c.RepoPath != tempDir {
+					return fmt.Errorf("expected repo %s, got %s", tempDir, c.RepoPath)
+				}
+				if c.Tag1Name != "v1.0.0" {
+					return fmt.Errorf("expected tag1 v1.0.0, got %s", c.Tag1Name)
+				}
+				if c.Tag2Name != "v2.0.0" {
+					return fmt.Errorf("expected tag2 v2.0.0, got %s", c.Tag2Name)
+				}
+				if c.Verbose != false {
+					return fmt.Errorf("expected verbose false, got %v", c.Verbose)
+				}
+				return nil
+			},
+			wantError: false,
+		},
+		{
+			name: "Valid compare command with verbose flag",
+			args: []string{"compare", "-repo", tempDir, "-tag1", "v1.0.0", "-tag2", "v2.0.0", "-v"},
+			validate: func(c *Config) error {
+				if c.Command != CompareCommand {
+					return fmt.Errorf("expected command %s, got %s", CompareCommand, c.Command)
+				}
+				if c.RepoPath != tempDir {
+					return fmt.Errorf("expected repo %s, got %s", tempDir, c.RepoPath)
+				}
+				if c.Tag1Name != "v1.0.0" {
+					return fmt.Errorf("expected tag1 v1.0.0, got %s", c.Tag1Name)
+				}
+				if c.Tag2Name != "v2.0.0" {
+					return fmt.Errorf("expected tag2 v2.0.0, got %s", c.Tag2Name)
+				}
+				if c.Verbose != true {
+					return fmt.Errorf("expected verbose true, got %v", c.Verbose)
+				}
+				return nil
+			},
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := ParseCommand(tt.args)
+			if tt.wantError {
+				if err == nil {
+					t.Errorf("ParseCommand() error = nil, want error")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("ParseCommand() error = %v, want nil", err)
+				}
+				if config != nil && tt.validate != nil {
+					if err := tt.validate(config); err != nil {
+						t.Errorf("Config validation failed: %v", err)
+					}
+				}
+			}
+		})
+	}
+}
 
 // TestConfigValidate tests the Validate method of Config
 func TestConfigValidate(t *testing.T) {
@@ -22,6 +102,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "Valid configuration",
 			config: Config{
+				Command:  CompareCommand,
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v2.0.0",
@@ -31,6 +112,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "Missing repository path",
 			config: Config{
+				Command:  CompareCommand,
 				RepoPath: "",
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v2.0.0",
@@ -40,6 +122,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "Missing tag1 name",
 			config: Config{
+				Command:  CompareCommand,
 				RepoPath: tempDir,
 				Tag1Name: "",
 				Tag2Name: "v2.0.0",
@@ -49,6 +132,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "Missing tag2 name",
 			config: Config{
+				Command:  CompareCommand,
 				RepoPath: tempDir,
 				Tag1Name: "v1.0.0",
 				Tag2Name: "",
@@ -58,6 +142,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "Non-existent repository path",
 			config: Config{
+				Command:  CompareCommand,
 				RepoPath: "/non/existent/path",
 				Tag1Name: "v1.0.0",
 				Tag2Name: "v2.0.0",
@@ -67,6 +152,7 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "All required fields missing",
 			config: Config{
+				Command:  CompareCommand,
 				RepoPath: "",
 				Tag1Name: "",
 				Tag2Name: "",

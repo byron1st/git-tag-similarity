@@ -1,9 +1,10 @@
 package main
 
 import (
-	"flag"
+	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/byron1st/git-tag-similarity/internal"
@@ -11,16 +12,23 @@ import (
 )
 
 func main() {
-	// 1. Parse command-line flags
-	config, err := internal.ParseFlags(PrintVersion)
+	// 1. Parse command-line arguments
+	config, err := internal.ParseCommand(os.Args[1:])
 	if err != nil {
-		log.Fatalf("Failed to parse flags: %v", err)
+		if errors.Is(err, internal.ErrNoCommand) || errors.Is(err, internal.ErrInvalidCommand) {
+			os.Exit(1)
+		}
+		log.Fatalf("Failed to parse command: %v", err)
+	}
+
+	// If we get here, we must have a compare command
+	if config.Command != internal.CompareCommand {
+		log.Fatalf("Unexpected command: %s", config.Command)
 	}
 
 	// Validate basic configuration
 	if err := config.Validate(); err != nil {
-		flag.Usage()
-		_, _ = fmt.Fprintf(flag.CommandLine.Output(), "\nError: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "\nError: %v\n", err)
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 
@@ -89,9 +97,11 @@ func main() {
 	fmt.Printf("  Unique to [%s]: %d\n", config.Tag1Name, len(onlyInTag1))
 	fmt.Printf("  Unique to [%s]: %d\n", config.Tag2Name, len(onlyInTag2))
 
-	// Print unique commits for each tag
-	printDiffCommits(repo, config.Tag1Name, onlyInTag1)
-	printDiffCommits(repo, config.Tag2Name, onlyInTag2)
+	// Print detailed commit lists if verbose flag is set
+	if config.Verbose {
+		printDiffCommits(repo, config.Tag1Name, onlyInTag1)
+		printDiffCommits(repo, config.Tag2Name, onlyInTag2)
+	}
 }
 
 // printDiffCommits prints the commit messages for commits unique to a tag

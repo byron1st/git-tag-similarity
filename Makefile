@@ -1,14 +1,3 @@
-# Version information
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
-BUILD_DATE ?= $(shell date -u '+%Y-%m-%d_%H:%M:%S')
-
-# Linker flags to inject version information
-LDFLAGS := -ldflags "\
-	-X main.Version=$(VERSION) \
-	-X main.Commit=$(COMMIT) \
-	-X main.BuildDate=$(BUILD_DATE)"
-
 # Binary name
 BINARY_NAME := git-tag-similarity
 
@@ -16,13 +5,13 @@ BINARY_NAME := git-tag-similarity
 
 all: build
 
-## build: Build the binary
+## build: Build the binary with VCS stamping
 build:
-	go build $(LDFLAGS) -o $(BINARY_NAME) .
+	go build -o $(BINARY_NAME) .
 
 ## install: Install the binary to $GOPATH/bin
 install:
-	go install $(LDFLAGS) .
+	go install .
 
 ## clean: Remove build artifacts
 clean:

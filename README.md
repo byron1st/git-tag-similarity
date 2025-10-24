@@ -25,34 +25,62 @@ make build
 make install
 ```
 
-### Manual Build
+### Direct Build (without Make)
 
 ```bash
 go build -o git-tag-similarity .
 ```
 
-### Build with Custom Version
-
-```bash
-go build -ldflags "-X main.Version=v1.0.0 -X main.Commit=$(git rev-parse --short HEAD) -X main.BuildDate=$(date -u '+%Y-%m-%d_%H:%M:%S')" .
-```
-
 ## Usage
 
-### Basic Usage
+The application uses a command-based interface with three commands: `compare`, `help`, and `version`.
+
+### Compare Two Tags
 
 ```bash
-git-tag-similarity -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0
+# Basic comparison (similarity only)
+git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0
+
+# Verbose comparison (includes list of different commits)
+git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v
+```
+
+### Show Help
+
+```bash
+git-tag-similarity help
+# Or
+git-tag-similarity
 ```
 
 ### Show Version
 
 ```bash
-git-tag-similarity -version
+git-tag-similarity version
 ```
 
-### Output Example
+### Get Help for a Specific Command
 
+```bash
+git-tag-similarity compare -h
+```
+
+### Output Examples
+
+#### Basic Output (without -v flag)
+```
+Comparing tags: v1.0.0 vs v2.0.0
+Similarity: 85.50%
+
+Summary:
+  Total commits in [v1.0.0]: 150
+  Total commits in [v2.0.0]: 180
+  Shared commits: 140
+  Unique to [v1.0.0]: 10
+  Unique to [v2.0.0]: 40
+```
+
+#### Verbose Output (with -v flag)
 ```
 Comparing tags: v1.0.0 vs v2.0.0
 Similarity: 85.50%
@@ -106,25 +134,25 @@ make help
 
 ### Version Management
 
-This project uses **build-time variable injection** for version management. The version information is set during the build process using `-ldflags`.
+This project uses **Go's embedded build information** (`runtime/debug.ReadBuildInfo()`) for version management. The version information is automatically embedded in the binary during the build process.
 
 #### How It Works
 
-1. **Version variables** are defined in `version.go`:
-   - `Version`: Semantic version (e.g., "v1.0.0")
-   - `Commit`: Git commit hash
-   - `BuildDate`: Build timestamp
+1. **VCS Information**: Go automatically embeds version control information when building:
+   - **Commit hash**: From `git rev-parse HEAD`
+   - **Commit time**: From `git log -1 --format=%cI`
+   - **Modified status**: Whether there are uncommitted changes
+   - **Module version**: From `go.mod` or git tags
 
-2. **Build-time injection** via Makefile:
-   ```makefile
-   VERSION ?= $(shell git describe --tags --always --dirty)
-   COMMIT ?= $(shell git rev-parse --short HEAD)
-   BUILD_DATE ?= $(shell date -u '+%Y-%m-%d_%H:%M:%S')
-   ```
+2. **Automatic Embedding**: When you build with `go build`, Go automatically includes:
+   - VCS type (git)
+   - Revision (commit hash)
+   - Commit timestamp
+   - Dirty flag (uncommitted changes)
 
-3. **Automatic version from Git tags**:
-   - If you have git tags, the version will be automatically set from `git describe --tags`
-   - Without tags, it defaults to "dev"
+3. **Version from Git Tags**:
+   - Use semantic versioning tags in your repository
+   - The version shown will be the module version or "dev" if not tagged
 
 #### Creating a Release
 
@@ -133,11 +161,24 @@ This project uses **build-time variable injection** for version management. The 
 git tag -a v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
 
-# Build with the tagged version
+# Update go.mod with the version (if needed)
+go mod edit -require=github.com/byron1st/git-tag-similarity@v1.0.0
+
+# Build the binary
 make build
 
-# The version will automatically be set to v1.0.0
-./git-tag-similarity -version
+# Check version (will show v1.0.0)
+./git-tag-similarity version
+```
+
+#### Version Output Example
+
+```
+git-tag-similarity version v1.0.0+dirty
+  Commit: cfd009b (modified)
+  Commit time: 2025-10-24 07:18:08
+  Go version: go1.25.2
+  OS/Arch: darwin/arm64
 ```
 
 ### Project Structure
@@ -145,13 +186,13 @@ make build
 ```
 git-tag-similarity/
 ├── main.go                    # Main entry point
-├── version.go                 # Version information
 ├── internal/                  # Internal package (not importable)
 │   ├── cli.go                # CLI configuration and flag parsing
 │   ├── cli_test.go           # CLI tests
 │   ├── repository.go         # Repository interface and implementation
 │   ├── similarity.go         # Jaccard similarity calculation
-│   └── similarity_test.go    # Similarity tests
+│   ├── similarity_test.go    # Similarity tests
+│   └── version.go            # Version information
 ├── mocks/                    # Generated mocks (go generate)
 │   └── repository_mock.go
 ├── Makefile                  # Build automation

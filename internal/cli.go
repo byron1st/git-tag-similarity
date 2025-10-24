@@ -10,48 +10,102 @@ import (
 )
 
 var (
-	ErrMissingRepo  = errors.New("repository path is required")
-	ErrMissingTag1  = errors.New("first tag name is required")
-	ErrMissingTag2  = errors.New("second tag name is required")
-	ErrInvalidRepo  = errors.New("invalid repository path")
-	ErrTag1NotFound = errors.New("first tag not found in repository")
-	ErrTag2NotFound = errors.New("second tag not found in repository")
+	ErrMissingRepo    = errors.New("repository path is required")
+	ErrMissingTag1    = errors.New("first tag name is required")
+	ErrMissingTag2    = errors.New("second tag name is required")
+	ErrInvalidRepo    = errors.New("invalid repository path")
+	ErrTag1NotFound   = errors.New("first tag not found in repository")
+	ErrTag2NotFound   = errors.New("second tag not found in repository")
+	ErrInvalidCommand = errors.New("invalid command")
+	ErrNoCommand      = errors.New("no command specified")
 )
 
-// Config holds the application configuration from command-line flags
+// Command represents the CLI command type
+type Command string
+
+const (
+	CompareCommand Command = "compare"
+	HelpCommand    Command = "help"
+	VersionCommand Command = "version"
+)
+
+// Config holds the application configuration from command-line arguments
 type Config struct {
+	Command  Command
 	RepoPath string
 	Tag1Name string
 	Tag2Name string
+	Verbose  bool
 }
 
-// ParseFlags parses command-line flags and returns the configuration
-func ParseFlags(printVersion func()) (*Config, error) {
-	config := &Config{}
-	showVersion := flag.Bool("version", false, "Print version information and exit")
-
-	flag.StringVar(&config.RepoPath, "repo", "", "Path to the Git repository")
-	flag.StringVar(&config.Tag1Name, "tag1", "", "First tag name to compare")
-	flag.StringVar(&config.Tag2Name, "tag2", "", "Second tag name to compare")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "This application compares two Git tags and calculates their similarity based on commit history.\n\n")
-		fmt.Fprintf(os.Stderr, "Options:\n")
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nExample:\n")
-		fmt.Fprintf(os.Stderr, "  %s -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0\n", os.Args[0])
+// ParseCommand parses command-line arguments and returns the configuration
+func ParseCommand(args []string) (*Config, error) {
+	if len(args) < 1 {
+		PrintUsage()
+		return nil, ErrNoCommand
 	}
 
-	flag.Parse()
+	command := args[0]
+	config := &Config{}
 
-	// Handle version flag
-	if *showVersion {
-		printVersion()
+	switch command {
+	case "compare":
+		return parseCompareCommand(args[1:])
+	case "help":
+		PrintUsage()
 		os.Exit(0)
+	case "version":
+		PrintVersion()
+		os.Exit(0)
+	default:
+		PrintUsage()
+		return nil, errors.Join(ErrInvalidCommand, fmt.Errorf("unknown command: %s", command))
 	}
 
 	return config, nil
+}
+
+// parseCompareCommand parses the compare command flags
+func parseCompareCommand(args []string) (*Config, error) {
+	config := &Config{Command: CompareCommand}
+
+	compareCmd := flag.NewFlagSet("compare", flag.ExitOnError)
+	compareCmd.StringVar(&config.RepoPath, "repo", "", "Path to the Git repository")
+	compareCmd.StringVar(&config.Tag1Name, "tag1", "", "First tag name to compare")
+	compareCmd.StringVar(&config.Tag2Name, "tag2", "", "Second tag name to compare")
+	compareCmd.BoolVar(&config.Verbose, "v", false, "Verbose output (show list of different commits)")
+
+	compareCmd.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: git-tag-similarity compare [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Compare two Git tags and calculate their similarity.\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		compareCmd.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nExamples:\n")
+		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0\n")
+		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v\n")
+	}
+
+	if err := compareCmd.Parse(args); err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+// PrintUsage prints the main usage information
+func PrintUsage() {
+	fmt.Fprintf(os.Stderr, "Usage: git-tag-similarity <command> [options]\n\n")
+	fmt.Fprintf(os.Stderr, "A tool to compare two Git tags and calculate their similarity based on commit history.\n\n")
+	fmt.Fprintf(os.Stderr, "Commands:\n")
+	fmt.Fprintf(os.Stderr, "  compare    Compare two Git tags\n")
+	fmt.Fprintf(os.Stderr, "  help       Show this help message\n")
+	fmt.Fprintf(os.Stderr, "  version    Show version information\n")
+	fmt.Fprintf(os.Stderr, "\nExamples:\n")
+	fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0\n")
+	fmt.Fprintf(os.Stderr, "  git-tag-similarity help\n")
+	fmt.Fprintf(os.Stderr, "  git-tag-similarity version\n")
+	fmt.Fprintf(os.Stderr, "\nFor more information on a command, use:\n")
+	fmt.Fprintf(os.Stderr, "  git-tag-similarity <command> -h\n")
 }
 
 // Validate checks if the configuration is valid
