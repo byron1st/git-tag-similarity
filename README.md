@@ -107,7 +107,7 @@ Commits only in [v2.0.0] (40):
 
 ### Prerequisites
 
-- Go 1.21 or higher
+- Go 1.25.2 or higher
 - Make (optional, but recommended)
 
 ### Building
@@ -187,8 +187,10 @@ git-tag-similarity version v1.0.0+dirty
 git-tag-similarity/
 ├── main.go                    # Main entry point
 ├── internal/                  # Internal package (not importable)
-│   ├── cli.go                # CLI configuration and flag parsing
-│   ├── cli_test.go           # CLI tests
+│   ├── cli.go                # CLI configuration and command parsing
+│   ├── compare.go            # Compare command implementation
+│   ├── compare_test.go       # Compare command tests
+│   ├── help.go               # Help command implementation
 │   ├── repository.go         # Repository interface and implementation
 │   ├── similarity.go         # Jaccard similarity calculation
 │   ├── similarity_test.go    # Similarity tests
