@@ -1,6 +1,8 @@
 module github.com/byron1st/git-tag-similarity
 
-go 1.25.2
+go 1.23.0
+
+toolchain go1.24.7
 
 require (
 	github.com/go-git/go-git/v5 v5.16.3
