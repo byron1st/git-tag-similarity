@@ -13,8 +13,6 @@ jobs:
   validate:
     name: Validate PR
     runs-on: ubuntu-latest
-    # Only run on PRs from releases/* branches
-    if: startsWith(github.head_ref, 'releases/')
 
     steps:
       - name: Checkout code
