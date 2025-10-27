@@ -161,9 +161,6 @@ This project uses **Go's embedded build information** (`runtime/debug.ReadBuildI
 git tag -a v1.0.0 -m "Release v1.0.0"
 git push origin v1.0.0
 
-# Update go.mod with the version (if needed)
-go mod edit -require=github.com/byron1st/git-tag-similarity@v1.0.0
-
 # Build the binary
 make build
 
