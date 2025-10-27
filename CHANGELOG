@@ -1,3 +1,7 @@
+# Release v1.0.1
+
+- Update only version number because of go proxy server cache
+
 # Release v1.0.0
 
 - ci: add GitHub Actions workflows for automated releases (#4) (466aa4e)
