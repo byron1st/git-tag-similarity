@@ -11,6 +11,12 @@ A Go application that compares two Git tags and calculates their similarity base
 
 ## Installation
 
+### Using go install
+
+```bash
+go install github.com/byron1st/git-tag-similarity@latest
+```
+
 ### From Source
 
 ```bash
@@ -23,12 +29,6 @@ make build
 
 # Or install to $GOPATH/bin
 make install
-```
-
-### Direct Build (without Make)
-
-```bash
-go build -o git-tag-similarity .
 ```
 
 ## Usage
