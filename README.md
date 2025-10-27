@@ -107,7 +107,7 @@ Commits only in [v2.0.0] (40):
 
 ### Prerequisites
 
-- Go 1.25.2 or higher
+- Go 1.23 or higher
 - Make (optional, but recommended)
 
 ### Building
@@ -174,7 +174,7 @@ make build
 git-tag-similarity version v1.0.0+dirty
   Commit: cfd009b (modified)
   Commit time: 2025-10-24 07:18:08 UTC
-  Go version: go1.25.2
+  Go version: go1.23.0
   OS/Arch: darwin/arm64
 ```
 
