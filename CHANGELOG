@@ -1,0 +1,16 @@
+# Release v1.0.0
+
+- ci: add GitHub Actions workflows for automated releases (#4) (466aa4e)
+- Update Go Project Version Compatibility (#3) (c3bcb8e)
+- docs: update Development section to match actual codebase (#2) (dfb6899)
+- docs: update installation instructions in README (#1) (28d871e)
+
+# Release v0.1.3
+- refactor: streamline command handling and remove unused code (6e5937b)
+
+# Release v0.1.1
+- fix: update commit time format in version output (7e8a654)
+
+# Release v0.1.0
+- refactor: enhance CLI command parsing and update documentation (404f40e)
+- feat: implement the basic functionality (cfd009b)
