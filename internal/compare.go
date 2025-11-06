@@ -48,6 +48,9 @@ func Compare(config CompareConfig) (CompareResult, error) {
 		return result, errors.Join(ErrOpenRepository, err)
 	}
 
+	// Store repo in result for later use (e.g., verbose output)
+	result.Repo = repo
+
 	// 3. Validate that both tags exist in the repository
 	if err := config.ValidateWithRepository(repo); err != nil {
 		return result, errors.Join(ErrValidationFailed, err)
