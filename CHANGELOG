@@ -1,3 +1,7 @@
+# Release v1.0.2
+
+- fix: store repository in CompareResult for later use (#7) (bd6234b)
+
 # Release v1.0.1
 
 - Update only version number because of go proxy server cache
