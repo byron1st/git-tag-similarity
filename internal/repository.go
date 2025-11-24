@@ -101,22 +101,24 @@ func (gr *GitRepository) GetCommitSetForTagFilteredByDirectory(ref *plumbing.Ref
 		return nil, errors.Join(ErrGetCommit, err)
 	}
 
-	// Traverse all parent commits
-	cIter, err := gr.repo.Log(&git.LogOptions{From: commit.Hash})
+	// Create path filter function for efficient filtering during traversal
+	pathFilter := func(path string) bool {
+		return gr.pathInDirectory(path, directory)
+	}
+
+	// Traverse commits with path filtering (much faster than manual diff checking)
+	cIter, err := gr.repo.Log(&git.LogOptions{
+		From:       commit.Hash,
+		PathFilter: pathFilter,
+	})
 	if err != nil {
 		return nil, errors.Join(ErrTraverseCommits, err)
 	}
 	defer func() { cIter.Close() }()
 
-	// Check each commit to see if it touches the specified directory
+	// Add all filtered commits to the set
 	err = cIter.ForEach(func(c *object.Commit) error {
-		touchesDirectory, err := gr.commitTouchesDirectory(c, directory)
-		if err != nil {
-			return err
-		}
-		if touchesDirectory {
-			commitSet[c.Hash] = struct{}{}
-		}
+		commitSet[c.Hash] = struct{}{}
 		return nil
 	})
 	if err != nil {
@@ -124,65 +126,6 @@ func (gr *GitRepository) GetCommitSetForTagFilteredByDirectory(ref *plumbing.Ref
 	}
 
 	return commitSet, nil
-}
-
-// commitTouchesDirectory checks if a commit modifies any files in the specified directory
-func (gr *GitRepository) commitTouchesDirectory(commit *object.Commit, directory string) (bool, error) {
-	// Get the tree for this commit
-	tree, err := commit.Tree()
-	if err != nil {
-		return false, err
-	}
-
-	// If the commit has no parents (initial commit), check if any files in the tree are in the directory
-	if commit.NumParents() == 0 {
-		return gr.treeContainsDirectory(tree, directory)
-	}
-
-	// Check each parent (handle merge commits)
-	for i := range commit.NumParents() {
-		parent, err := commit.Parent(i)
-		if err != nil {
-			return false, err
-		}
-
-		parentTree, err := parent.Tree()
-		if err != nil {
-			return false, err
-		}
-
-		// Get the changes between parent and current commit
-		changes, err := parentTree.Diff(tree)
-		if err != nil {
-			return false, err
-		}
-
-		// Check if any changes touch the specified directory
-		for _, change := range changes {
-			// Check both From and To paths (for renames/moves)
-			if gr.pathInDirectory(change.From.Name, directory) || gr.pathInDirectory(change.To.Name, directory) {
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
-}
-
-// treeContainsDirectory checks if a tree contains any files in the specified directory
-func (gr *GitRepository) treeContainsDirectory(tree *object.Tree, directory string) (bool, error) {
-	found := false
-	err := tree.Files().ForEach(func(f *object.File) error {
-		if gr.pathInDirectory(f.Name, directory) {
-			found = true
-			return errors.New("found") // Stop iteration
-		}
-		return nil
-	})
-	if err != nil && err.Error() != "found" {
-		return false, err
-	}
-	return found, nil
 }
 
 // pathInDirectory checks if a file path is within the specified directory
