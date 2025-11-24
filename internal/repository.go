@@ -20,6 +20,7 @@ var (
 type Repository interface {
 	FetchAllTags() ([]*plumbing.Reference, error)
 	GetCommitSetForTag(ref *plumbing.Reference) (map[plumbing.Hash]struct{}, error)
+	GetCommitSetForTagFilteredByDirectory(ref *plumbing.Reference, directory string) (map[plumbing.Hash]struct{}, error)
 	GetCommitObject(hash plumbing.Hash) (*object.Commit, error)
 }
 
@@ -87,6 +88,123 @@ func (gr *GitRepository) GetCommitSetForTag(ref *plumbing.Reference) (map[plumbi
 	}
 
 	return commitSet, nil
+}
+
+// GetCommitSetForTagFilteredByDirectory traverses the history of a tag and returns commits
+// that touch files in the specified directory
+func (gr *GitRepository) GetCommitSetForTagFilteredByDirectory(ref *plumbing.Reference, directory string) (map[plumbing.Hash]struct{}, error) {
+	commitSet := make(map[plumbing.Hash]struct{})
+
+	// Get the commit object that the tag points to (handles annotated tags automatically)
+	commit, err := gr.repo.CommitObject(ref.Hash())
+	if err != nil {
+		return nil, errors.Join(ErrGetCommit, err)
+	}
+
+	// Traverse all parent commits
+	cIter, err := gr.repo.Log(&git.LogOptions{From: commit.Hash})
+	if err != nil {
+		return nil, errors.Join(ErrTraverseCommits, err)
+	}
+	defer func() { cIter.Close() }()
+
+	// Check each commit to see if it touches the specified directory
+	err = cIter.ForEach(func(c *object.Commit) error {
+		touchesDirectory, err := gr.commitTouchesDirectory(c, directory)
+		if err != nil {
+			return err
+		}
+		if touchesDirectory {
+			commitSet[c.Hash] = struct{}{}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Join(ErrTraverseCommits, err)
+	}
+
+	return commitSet, nil
+}
+
+// commitTouchesDirectory checks if a commit modifies any files in the specified directory
+func (gr *GitRepository) commitTouchesDirectory(commit *object.Commit, directory string) (bool, error) {
+	// Get the tree for this commit
+	tree, err := commit.Tree()
+	if err != nil {
+		return false, err
+	}
+
+	// If the commit has no parents (initial commit), check if any files in the tree are in the directory
+	if commit.NumParents() == 0 {
+		return gr.treeContainsDirectory(tree, directory)
+	}
+
+	// Check each parent (handle merge commits)
+	for i := range commit.NumParents() {
+		parent, err := commit.Parent(i)
+		if err != nil {
+			return false, err
+		}
+
+		parentTree, err := parent.Tree()
+		if err != nil {
+			return false, err
+		}
+
+		// Get the changes between parent and current commit
+		changes, err := parentTree.Diff(tree)
+		if err != nil {
+			return false, err
+		}
+
+		// Check if any changes touch the specified directory
+		for _, change := range changes {
+			// Check both From and To paths (for renames/moves)
+			if gr.pathInDirectory(change.From.Name, directory) || gr.pathInDirectory(change.To.Name, directory) {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// treeContainsDirectory checks if a tree contains any files in the specified directory
+func (gr *GitRepository) treeContainsDirectory(tree *object.Tree, directory string) (bool, error) {
+	found := false
+	err := tree.Files().ForEach(func(f *object.File) error {
+		if gr.pathInDirectory(f.Name, directory) {
+			found = true
+			return errors.New("found") // Stop iteration
+		}
+		return nil
+	})
+	if err != nil && err.Error() != "found" {
+		return false, err
+	}
+	return found, nil
+}
+
+// pathInDirectory checks if a file path is within the specified directory
+func (gr *GitRepository) pathInDirectory(path string, directory string) bool {
+	if directory == "" {
+		return true
+	}
+	// Normalize paths by removing trailing slashes
+	dir := directory
+	if len(dir) > 0 && dir[len(dir)-1] == '/' {
+		dir = dir[:len(dir)-1]
+	}
+	// Check if path starts with directory/
+	if len(path) >= len(dir) {
+		if path[:len(dir)] == dir {
+			// Exact match or starts with directory/
+			if len(path) == len(dir) || path[len(dir)] == '/' {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // GetCommitObject retrieves a commit object by its hash

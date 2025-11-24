@@ -66,6 +66,55 @@ func TestNewCompareConfig(t *testing.T) {
 			},
 			wantError: false,
 		},
+		{
+			name: "Valid compare command with directory filter",
+			args: []string{"-repo", tempDir, "-tag1", "v1.0.0", "-tag2", "v2.0.0", "-d", "src/api"},
+			validate: func(c CompareConfig) error {
+				if c.Command != CompareCommand {
+					return fmt.Errorf("expected command %s, got %s", CompareCommand, c.Command)
+				}
+				if c.RepoPath != tempDir {
+					return fmt.Errorf("expected repo %s, got %s", tempDir, c.RepoPath)
+				}
+				if c.Tag1Name != "v1.0.0" {
+					return fmt.Errorf("expected tag1 v1.0.0, got %s", c.Tag1Name)
+				}
+				if c.Tag2Name != "v2.0.0" {
+					return fmt.Errorf("expected tag2 v2.0.0, got %s", c.Tag2Name)
+				}
+				if c.Directory != "src/api" {
+					return fmt.Errorf("expected directory src/api, got %s", c.Directory)
+				}
+				return nil
+			},
+			wantError: false,
+		},
+		{
+			name: "Valid compare command with directory and verbose flags",
+			args: []string{"-repo", tempDir, "-tag1", "v1.0.0", "-tag2", "v2.0.0", "-d", "internal", "-v"},
+			validate: func(c CompareConfig) error {
+				if c.Command != CompareCommand {
+					return fmt.Errorf("expected command %s, got %s", CompareCommand, c.Command)
+				}
+				if c.RepoPath != tempDir {
+					return fmt.Errorf("expected repo %s, got %s", tempDir, c.RepoPath)
+				}
+				if c.Tag1Name != "v1.0.0" {
+					return fmt.Errorf("expected tag1 v1.0.0, got %s", c.Tag1Name)
+				}
+				if c.Tag2Name != "v2.0.0" {
+					return fmt.Errorf("expected tag2 v2.0.0, got %s", c.Tag2Name)
+				}
+				if c.Directory != "internal" {
+					return fmt.Errorf("expected directory internal, got %s", c.Directory)
+				}
+				if c.Verbose != true {
+					return fmt.Errorf("expected verbose true, got %v", c.Verbose)
+				}
+				return nil
+			},
+			wantError: false,
+		},
 	}
 
 	for _, tt := range tests {

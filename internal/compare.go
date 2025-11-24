@@ -19,6 +19,9 @@ var (
 
 func PrintCompareResult(result CompareResult) {
 	fmt.Printf("Comparing tags: %s vs %s\n", result.Config.Tag1Name, result.Config.Tag2Name)
+	if result.Config.Directory != "" {
+		fmt.Printf("Directory filter: %s\n", result.Config.Directory)
+	}
 	fmt.Printf("Similarity: %.2f%%\n", result.Similarity*100.0)
 	fmt.Printf("\nSummary:\n")
 	fmt.Printf("  Total commits in [%s]: %d\n", result.Config.Tag1Name, len(result.OnlyInTag1))
@@ -67,15 +70,28 @@ func Compare(config CompareConfig) (CompareResult, error) {
 		return result, errors.Join(ErrGetTagReference, err)
 	}
 
-	// 5. Get commit sets for both tags
-	tag1Commits, err := repo.GetCommitSetForTag(tag1Ref)
-	if err != nil {
-		return result, errors.Join(ErrGetCommits, err)
-	}
+	// 5. Get commit sets for both tags (with optional directory filtering)
+	var tag1Commits, tag2Commits map[plumbing.Hash]struct{}
+	if config.Directory != "" {
+		tag1Commits, err = repo.GetCommitSetForTagFilteredByDirectory(tag1Ref, config.Directory)
+		if err != nil {
+			return result, errors.Join(ErrGetCommits, err)
+		}
 
-	tag2Commits, err := repo.GetCommitSetForTag(tag2Ref)
-	if err != nil {
-		return result, errors.Join(ErrGetCommits, err)
+		tag2Commits, err = repo.GetCommitSetForTagFilteredByDirectory(tag2Ref, config.Directory)
+		if err != nil {
+			return result, errors.Join(ErrGetCommits, err)
+		}
+	} else {
+		tag1Commits, err = repo.GetCommitSetForTag(tag1Ref)
+		if err != nil {
+			return result, errors.Join(ErrGetCommits, err)
+		}
+
+		tag2Commits, err = repo.GetCommitSetForTag(tag2Ref)
+		if err != nil {
+			return result, errors.Join(ErrGetCommits, err)
+		}
 	}
 
 	// 6. Calculate similarity
@@ -124,11 +140,12 @@ func printDiffCommits(repo Repository, tagName string, diffSet map[plumbing.Hash
 
 // CompareConfig holds the application configuration from command-line arguments
 type CompareConfig struct {
-	Command  Command
-	RepoPath string
-	Tag1Name string
-	Tag2Name string
-	Verbose  bool
+	Command   Command
+	RepoPath  string
+	Tag1Name  string
+	Tag2Name  string
+	Directory string
+	Verbose   bool
 }
 
 // NewCompareConfig parses the compare command flags
@@ -139,6 +156,7 @@ func NewCompareConfig(args []string) (CompareConfig, error) {
 	compareCmd.StringVar(&config.RepoPath, "repo", "", "Path to the Git repository")
 	compareCmd.StringVar(&config.Tag1Name, "tag1", "", "First tag name to compare")
 	compareCmd.StringVar(&config.Tag2Name, "tag2", "", "Second tag name to compare")
+	compareCmd.StringVar(&config.Directory, "d", "", "Directory path to filter commits (only commits touching this directory)")
 	compareCmd.BoolVar(&config.Verbose, "v", false, "Verbose output (show list of different commits)")
 
 	compareCmd.Usage = func() {
@@ -149,6 +167,7 @@ func NewCompareConfig(args []string) (CompareConfig, error) {
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v\n")
+		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -d src/api\n")
 	}
 
 	if err := compareCmd.Parse(args); err != nil {
