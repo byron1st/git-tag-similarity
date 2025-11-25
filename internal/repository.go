@@ -2,7 +2,10 @@
 package internal
 
 import (
+	"bufio"
 	"errors"
+	"os/exec"
+	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -91,7 +94,8 @@ func (gr *GitRepository) GetCommitSetForTag(ref *plumbing.Reference) (map[plumbi
 }
 
 // GetCommitSetForTagFilteredByDirectory traverses the history of a tag and returns commits
-// that touch files in the specified directory
+// that touch files in the specified directory.
+// Uses native git log command for performance (go-git's PathFilter is extremely slow).
 func (gr *GitRepository) GetCommitSetForTagFilteredByDirectory(ref *plumbing.Reference, directory string) (map[plumbing.Hash]struct{}, error) {
 	commitSet := make(map[plumbing.Hash]struct{})
 
@@ -101,53 +105,32 @@ func (gr *GitRepository) GetCommitSetForTagFilteredByDirectory(ref *plumbing.Ref
 		return nil, errors.Join(ErrGetCommit, err)
 	}
 
-	// Create path filter function for efficient filtering during traversal
-	pathFilter := func(path string) bool {
-		return gr.pathInDirectory(path, directory)
-	}
+	// Use native git log with path filtering (orders of magnitude faster than go-git's PathFilter)
+	// Command: git log <commit> --format=%H -- <directory>
+	cmd := exec.Command("git", "log", commit.Hash.String(), "--format=%H", "--", directory)
+	cmd.Dir = gr.path
 
-	// Traverse commits with path filtering (much faster than manual diff checking)
-	cIter, err := gr.repo.Log(&git.LogOptions{
-		From:       commit.Hash,
-		PathFilter: pathFilter,
-	})
+	output, err := cmd.Output()
 	if err != nil {
 		return nil, errors.Join(ErrTraverseCommits, err)
 	}
-	defer func() { cIter.Close() }()
 
-	// Add all filtered commits to the set
-	err = cIter.ForEach(func(c *object.Commit) error {
-		commitSet[c.Hash] = struct{}{}
-		return nil
-	})
-	if err != nil {
+	// Parse commit hashes from output
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		hash := plumbing.NewHash(line)
+		commitSet[hash] = struct{}{}
+	}
+
+	if err := scanner.Err(); err != nil {
 		return nil, errors.Join(ErrTraverseCommits, err)
 	}
 
 	return commitSet, nil
-}
-
-// pathInDirectory checks if a file path is within the specified directory
-func (gr *GitRepository) pathInDirectory(path string, directory string) bool {
-	if directory == "" {
-		return true
-	}
-	// Normalize paths by removing trailing slashes
-	dir := directory
-	if len(dir) > 0 && dir[len(dir)-1] == '/' {
-		dir = dir[:len(dir)-1]
-	}
-	// Check if path starts with directory/
-	if len(path) >= len(dir) {
-		if path[:len(dir)] == dir {
-			// Exact match or starts with directory/
-			if len(path) == len(dir) || path[len(dir)] == '/' {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // GetCommitObject retrieves a commit object by its hash
