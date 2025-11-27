@@ -7,12 +7,30 @@ import (
 	"time"
 )
 
+// These variables can be set via ldflags at build time
+var (
+	Version    = ""
+	Commit     = ""
+	CommitTime = ""
+)
+
 // PrintVersion prints the version information retrieved from the binary's build info
 func PrintVersion() {
 	version := "dev"
 	commit := "unknown"
 	commitTime := "unknown"
 	modified := false
+
+	// Use ldflags values as defaults if available
+	if Version != "" {
+		version = Version
+	}
+	if Commit != "" {
+		commit = Commit
+	}
+	if CommitTime != "" {
+		commitTime = CommitTime
+	}
 
 	// Read build info from the binary
 	if info, ok := debug.ReadBuildInfo(); ok {
