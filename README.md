@@ -6,8 +6,10 @@ A Go application that compares two Git tags and calculates their similarity base
 
 - Compare any two Git tags in a repository
 - Calculate similarity score based on shared commit history
+- Filter comparisons by specific directories or paths
 - Show commits unique to each tag
 - Display detailed commit information
+- Automated CI/CD with GitHub Actions
 
 ## Installation
 
@@ -43,6 +45,12 @@ git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0
 
 # Verbose comparison (includes list of different commits)
 git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v
+
+# Compare with directory filter (only commits touching specific directory)
+git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -d src/api
+
+# Combine verbose and directory filter
+git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v -d internal
 ```
 
 ### Show Help
@@ -182,24 +190,36 @@ git-tag-similarity version v1.0.0+dirty
 
 ```
 git-tag-similarity/
-├── main.go                    # Main entry point
-├── internal/                  # Internal package (not importable)
-│   ├── cli.go                # CLI configuration and command parsing
-│   ├── compare.go            # Compare command implementation
-│   ├── compare_test.go       # Compare command tests
-│   ├── help.go               # Help command implementation
-│   ├── repository.go         # Repository interface and implementation
+├── main.go                    # Main entry point (minimal, orchestration only)
+├── internal/                  # Internal package (all implementation details)
+│   ├── cli.go                # Command parsing (compare, help, version)
+│   ├── compare.go            # Compare command logic and configuration
+│   ├── compare_test.go       # Compare logic tests
+│   ├── help.go               # Usage and help message printing
+│   ├── repository.go         # Repository interface + GitRepository implementation
+│   ├── repository_test.go    # Repository unit tests
 │   ├── similarity.go         # Jaccard similarity calculation
-│   ├── similarity_test.go    # Similarity tests
-│   └── version.go            # Version information
+│   ├── similarity_test.go    # Similarity unit tests
+│   └── version.go            # Version info via runtime/debug.ReadBuildInfo()
 ├── mocks/                    # Generated mocks (go generate)
-│   └── repository_mock.go
+│   └── repository_mock.go    # Mock Repository (uber-go/mock)
+├── .github/                  # GitHub Actions workflows
+│   └── workflows/
+│       ├── pr-validation.yml # Pull request validation
+│       └── release.yml       # Automated release process
 ├── Makefile                  # Build automation
 ├── go.mod                    # Go module definition
-└── README.md                 # This file
+├── go.sum                    # Dependency checksums
+├── LICENSE                   # MIT License
+├── README.md                 # User-facing documentation (this file)
+├── CHANGELOG                 # Release history and notes
+├── CLAUDE.md                 # Claude Code configuration
+└── AGENTS.md                 # Project overview and architecture
 ```
 
 ## Testing
+
+The project includes comprehensive unit tests (33 tests total) covering all major components.
 
 ```bash
 # Run all tests
@@ -208,6 +228,15 @@ make test
 # Or use go test directly
 go test -v ./...
 ```
+
+## Architecture
+
+- **Interface-based design**: `Repository` interface allows dependency injection for testing
+- **Generated mocks**: Using uber-go/mock for type-safe mocking
+- **Automatic VCS stamping**: Version info from `runtime/debug.ReadBuildInfo()`
+- **Standard Go project layout**: Code in `internal/` package, entry point in root
+- **Separation of concerns**: CLI parsing, compare logic, and help output in separate files
+- **CI/CD automation**: GitHub Actions for PR validation and automated releases
 
 ## License
 
