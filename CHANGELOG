@@ -1,3 +1,8 @@
+# Release v1.1.1
+
+- refactor: simplify version command by removing unreliable commit info (#11) (0437163)
+- docs: update README.md file to reflect the current status (8f6c575)
+
 # Release v1.1.0
 
 - feat: add directory filter flag to compare command (#9) (5f66208)
