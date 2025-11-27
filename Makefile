@@ -5,7 +5,7 @@ BINARY_NAME := git-tag-similarity
 
 all: build
 
-## build: Build the binary with VCS stamping
+## build: Build the binary
 build:
 	go build -o $(BINARY_NAME) .
 
