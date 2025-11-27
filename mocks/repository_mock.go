@@ -85,3 +85,18 @@ func (mr *MockRepositoryMockRecorder) GetCommitSetForTag(ref any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommitSetForTag", reflect.TypeOf((*MockRepository)(nil).GetCommitSetForTag), ref)
 }
+
+// GetCommitSetForTagFilteredByDirectory mocks base method.
+func (m *MockRepository) GetCommitSetForTagFilteredByDirectory(ref *plumbing.Reference, directory string) (map[plumbing.Hash]struct{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommitSetForTagFilteredByDirectory", ref, directory)
+	ret0, _ := ret[0].(map[plumbing.Hash]struct{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCommitSetForTagFilteredByDirectory indicates an expected call of GetCommitSetForTagFilteredByDirectory.
+func (mr *MockRepositoryMockRecorder) GetCommitSetForTagFilteredByDirectory(ref, directory any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommitSetForTagFilteredByDirectory", reflect.TypeOf((*MockRepository)(nil).GetCommitSetForTagFilteredByDirectory), ref, directory)
+}

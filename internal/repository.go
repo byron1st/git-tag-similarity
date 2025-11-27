@@ -2,7 +2,10 @@
 package internal
 
 import (
+	"bufio"
 	"errors"
+	"os/exec"
+	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -20,6 +23,7 @@ var (
 type Repository interface {
 	FetchAllTags() ([]*plumbing.Reference, error)
 	GetCommitSetForTag(ref *plumbing.Reference) (map[plumbing.Hash]struct{}, error)
+	GetCommitSetForTagFilteredByDirectory(ref *plumbing.Reference, directory string) (map[plumbing.Hash]struct{}, error)
 	GetCommitObject(hash plumbing.Hash) (*object.Commit, error)
 }
 
@@ -83,6 +87,46 @@ func (gr *GitRepository) GetCommitSetForTag(ref *plumbing.Reference) (map[plumbi
 		return nil
 	})
 	if err != nil {
+		return nil, errors.Join(ErrTraverseCommits, err)
+	}
+
+	return commitSet, nil
+}
+
+// GetCommitSetForTagFilteredByDirectory traverses the history of a tag and returns commits
+// that touch files in the specified directory.
+// Uses native git log command for performance (go-git's PathFilter is extremely slow).
+func (gr *GitRepository) GetCommitSetForTagFilteredByDirectory(ref *plumbing.Reference, directory string) (map[plumbing.Hash]struct{}, error) {
+	commitSet := make(map[plumbing.Hash]struct{})
+
+	// Get the commit object that the tag points to (handles annotated tags automatically)
+	commit, err := gr.repo.CommitObject(ref.Hash())
+	if err != nil {
+		return nil, errors.Join(ErrGetCommit, err)
+	}
+
+	// Use native git log with path filtering (orders of magnitude faster than go-git's PathFilter)
+	// Command: git log <commit> --format=%H -- <directory>
+	cmd := exec.Command("git", "log", commit.Hash.String(), "--format=%H", "--", directory)
+	cmd.Dir = gr.path
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, errors.Join(ErrTraverseCommits, err)
+	}
+
+	// Parse commit hashes from output
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		hash := plumbing.NewHash(line)
+		commitSet[hash] = struct{}{}
+	}
+
+	if err := scanner.Err(); err != nil {
 		return nil, errors.Join(ErrTraverseCommits, err)
 	}
 
