@@ -15,6 +15,7 @@ var (
 	ErrValidationFailed     = errors.New("validation failed")
 	ErrGetTagReference      = errors.New("failed to get tag reference")
 	ErrGetCommits           = errors.New("failed to get commits")
+	ErrInvalidDirectory     = errors.New("invalid directory path")
 )
 
 func PrintCompareResult(result CompareResult) {
@@ -195,6 +196,18 @@ func (c *CompareConfig) Validate() error {
 	// Check if repository path exists and is accessible
 	if _, err := os.Stat(c.RepoPath); os.IsNotExist(err) {
 		return errors.Join(ErrInvalidRepo, fmt.Errorf("path does not exist: %s", c.RepoPath))
+	}
+
+	// Check if directory path exists (if specified)
+	if c.Directory != "" {
+		dirPath := fmt.Sprintf("%s/%s", c.RepoPath, c.Directory)
+		if stat, err := os.Stat(dirPath); os.IsNotExist(err) {
+			return errors.Join(ErrInvalidDirectory, fmt.Errorf("directory does not exist: %s", c.Directory))
+		} else if err != nil {
+			return errors.Join(ErrInvalidDirectory, fmt.Errorf("cannot access directory: %s", c.Directory))
+		} else if !stat.IsDir() {
+			return errors.Join(ErrInvalidDirectory, fmt.Errorf("path is not a directory: %s", c.Directory))
+		}
 	}
 
 	return nil
