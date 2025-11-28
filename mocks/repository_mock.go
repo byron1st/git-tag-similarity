@@ -100,3 +100,18 @@ func (mr *MockRepositoryMockRecorder) GetCommitSetForTagFilteredByDirectory(ref,
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommitSetForTagFilteredByDirectory", reflect.TypeOf((*MockRepository)(nil).GetCommitSetForTagFilteredByDirectory), ref, directory)
 }
+
+// GetDiffBetweenTags mocks base method.
+func (m *MockRepository) GetDiffBetweenTags(tag1, tag2 *plumbing.Reference, directory string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDiffBetweenTags", tag1, tag2, directory)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDiffBetweenTags indicates an expected call of GetDiffBetweenTags.
+func (mr *MockRepositoryMockRecorder) GetDiffBetweenTags(tag1, tag2, directory any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDiffBetweenTags", reflect.TypeOf((*MockRepository)(nil).GetDiffBetweenTags), tag1, tag2, directory)
+}
