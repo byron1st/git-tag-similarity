@@ -124,6 +124,21 @@ func Compare(config CompareConfig) (CompareResult, error) {
 		}
 	}
 
+	// 8. Store tag references for diff generation
+	result.Tag1Ref = tag1Ref
+	result.Tag2Ref = tag2Ref
+
+	// 9. Get diff stat between tags (for AI report generation)
+	if config.ReportPath != "" {
+		diffStat, err := repo.GetDiffBetweenTags(tag1Ref, tag2Ref, config.Directory)
+		if err != nil {
+			// Don't fail the whole operation if diff fails, just log it
+			fmt.Fprintf(os.Stderr, "Warning: Failed to get diff stat: %v\n", err)
+		} else {
+			result.DiffStat = diffStat
+		}
+	}
+
 	return result, nil
 }
 
@@ -277,8 +292,11 @@ func (c *CompareConfig) GetTagReference(repo Repository, tagName string) (*plumb
 type CompareResult struct {
 	Repo          Repository
 	Config        CompareConfig
+	Tag1Ref       *plumbing.Reference
+	Tag2Ref       *plumbing.Reference
 	Similarity    float64
 	SharedCommits map[plumbing.Hash]struct{}
 	OnlyInTag1    map[plumbing.Hash]struct{}
 	OnlyInTag2    map[plumbing.Hash]struct{}
+	DiffStat      string
 }

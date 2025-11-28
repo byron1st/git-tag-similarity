@@ -404,6 +404,11 @@ func callGeminiAPI(prompt string, apiKey string, model string) (string, error) {
 
 // buildAnalysisPrompt creates the common analysis prompt used by all AI providers
 func buildAnalysisPrompt(result CompareResult, commitData string) string {
+	diffSection := ""
+	if result.DiffStat != "" {
+		diffSection = fmt.Sprintf("\n## File Changes (Diff Summary)\n\n```\n%s\n```\n", result.DiffStat)
+	}
+
 	return fmt.Sprintf(`You are analyzing the differences between two Git tags in a repository.
 
 Repository: %s
@@ -420,17 +425,18 @@ Summary:
 - Unique to [%s]: %d
 
 %s
-
+%s
 Please create a detailed Markdown-formatted analysis report that includes:
 
 1. Executive Summary (2-3 sentences about the overall changes)
 2. Similarity Analysis (explain what the %.2f%% similarity means)
-3. Key Changes (analyze the unique commits in each tag)
-4. Impact Assessment (evaluate the significance of the differences)
+3. Key Changes (analyze the unique commits in each tag AND the file changes shown in the diff summary)
+4. Impact Assessment (evaluate the significance of the differences based on both commits and actual code changes)
 5. Recommendations (if applicable)
 
 Format the output as proper Markdown with appropriate headers, lists, and formatting.
-Keep the analysis concise but insightful. Focus on what the differences mean for the project.`,
+Keep the analysis concise but insightful. Focus on what the differences mean for the project.
+Pay special attention to the file changes in the diff summary to understand the actual code modifications.`,
 		result.Config.RepoPath,
 		result.Config.Tag1Name,
 		result.Config.Tag2Name,
@@ -442,6 +448,7 @@ Keep the analysis concise but insightful. Focus on what the differences mean for
 		result.Config.Tag1Name, len(result.OnlyInTag1),
 		result.Config.Tag2Name, len(result.OnlyInTag2),
 		commitData,
+		diffSection,
 		result.Similarity*100.0,
 	)
 }

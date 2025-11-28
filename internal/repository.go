@@ -25,6 +25,7 @@ type Repository interface {
 	GetCommitSetForTag(ref *plumbing.Reference) (map[plumbing.Hash]struct{}, error)
 	GetCommitSetForTagFilteredByDirectory(ref *plumbing.Reference, directory string) (map[plumbing.Hash]struct{}, error)
 	GetCommitObject(hash plumbing.Hash) (*object.Commit, error)
+	GetDiffBetweenTags(tag1 *plumbing.Reference, tag2 *plumbing.Reference, directory string) (string, error)
 }
 
 // GitRepository is a concrete implementation of Repository using go-git
@@ -140,4 +141,36 @@ func (gr *GitRepository) GetCommitObject(hash plumbing.Hash) (*object.Commit, er
 		return nil, errors.Join(ErrGetCommit, err)
 	}
 	return commit, nil
+}
+
+// GetDiffBetweenTags returns the diff between two tags
+// If directory is specified, only shows diff for files in that directory
+func (gr *GitRepository) GetDiffBetweenTags(tag1 *plumbing.Reference, tag2 *plumbing.Reference, directory string) (string, error) {
+	// Get commit objects for both tags
+	commit1, err := gr.repo.CommitObject(tag1.Hash())
+	if err != nil {
+		return "", errors.Join(ErrGetCommit, err)
+	}
+
+	commit2, err := gr.repo.CommitObject(tag2.Hash())
+	if err != nil {
+		return "", errors.Join(ErrGetCommit, err)
+	}
+
+	// Use git diff command with stat and shortstat for summary
+	// Command: git diff <tag1> <tag2> -- <directory>
+	args := []string{"diff", "--stat", "--stat-width=120", commit1.Hash.String(), commit2.Hash.String()}
+	if directory != "" {
+		args = append(args, "--", directory)
+	}
+
+	cmd := exec.Command("git", args...)
+	cmd.Dir = gr.path
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", errors.Join(ErrTraverseCommits, err)
+	}
+
+	return string(output), nil
 }
