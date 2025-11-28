@@ -154,7 +154,7 @@ func callClaudeAPI(prompt string, apiKey string) (string, error) {
 	apiURL := "https://api.anthropic.com/v1/messages"
 
 	reqBody := ClaudeRequest{
-		Model:     "claude-sonnet-4-5-20250929",
+		Model:     "claude-haiku-4-5-20250929",
 		MaxTokens: 4096,
 		Messages: []ClaudeMessage{
 			{
@@ -250,7 +250,7 @@ func callOpenAIAPI(prompt string, apiKey string) (string, error) {
 	apiURL := "https://api.openai.com/v1/chat/completions"
 
 	reqBody := OpenAIRequest{
-		Model: "gpt-4o",
+		Model: "gpt-4o-mini",
 		Messages: []OpenAIMessage{
 			{
 				Role:    "user",
@@ -344,7 +344,7 @@ func generateReportWithGemini(result CompareResult, config *AIConfig) (string, e
 
 // callGeminiAPI makes a request to the Gemini API
 func callGeminiAPI(prompt string, apiKey string) (string, error) {
-	apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=%s", apiKey)
+	apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=%s", apiKey)
 
 	reqBody := GeminiRequest{
 		Contents: []GeminiContent{
