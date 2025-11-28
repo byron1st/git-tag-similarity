@@ -128,7 +128,7 @@ func NewConfigCommandConfig(args []string) (ConfigCommandConfig, error) {
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider claude -api-key sk-ant-...\n")
 		fmt.Fprintf(os.Stderr, "\nSupported providers:\n")
 		fmt.Fprintf(os.Stderr, "  claude    Anthropic Claude (default)\n")
-		fmt.Fprintf(os.Stderr, "\nNote: Your API key is stored securely in ~/.git-tag-similarity/config.json\n")
+		fmt.Fprintf(os.Stderr, "\nNote: Your API key is stored in ~/.git-tag-similarity/config.json\n")
 	}
 
 	if err := configCmd.Parse(args); err != nil {

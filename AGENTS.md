@@ -97,5 +97,5 @@ git-tag-similarity version
 7. **CI/CD automation**: GitHub Actions for PR validation and automated releases
 8. **Directory filtering**: Optional directory filter for comparing tags based on specific paths
 9. **AI-powered reports**: Optional AI-generated markdown reports analyzing tag differences
-10. **Configuration management**: Secure storage of AI API keys in `~/.git-tag-similarity/config.json`
+10. **Configuration management**: Storage of AI API keys in `~/.git-tag-similarity/config.json`
 11. **Graceful degradation**: Report generation fails gracefully with warnings if config is missing
