@@ -25,8 +25,8 @@ func PrintCompareResult(result CompareResult) {
 	}
 	fmt.Printf("Similarity: %.2f%%\n", result.Similarity*100.0)
 	fmt.Printf("\nSummary:\n")
-	fmt.Printf("  Total commits in [%s]: %d\n", result.Config.Tag1Name, len(result.OnlyInTag1))
-	fmt.Printf("  Total commits in [%s]: %d\n", result.Config.Tag2Name, len(result.OnlyInTag2))
+	fmt.Printf("  Total commits in [%s]: %d\n", result.Config.Tag1Name, len(result.OnlyInTag1)+len(result.SharedCommits))
+	fmt.Printf("  Total commits in [%s]: %d\n", result.Config.Tag2Name, len(result.OnlyInTag2)+len(result.SharedCommits))
 	fmt.Printf("  Shared commits: %d\n", len(result.SharedCommits))
 	fmt.Printf("  Unique to [%s]: %d\n", result.Config.Tag1Name, len(result.OnlyInTag1))
 	fmt.Printf("  Unique to [%s]: %d\n", result.Config.Tag2Name, len(result.OnlyInTag2))
@@ -35,6 +35,13 @@ func PrintCompareResult(result CompareResult) {
 	if result.Config.Verbose {
 		printDiffCommits(result.Repo, result.Config.Tag1Name, result.OnlyInTag1)
 		printDiffCommits(result.Repo, result.Config.Tag2Name, result.OnlyInTag2)
+	}
+
+	// Generate AI report if report path is specified
+	if result.Config.ReportPath != "" {
+		if err := GenerateReport(result, result.Config.ReportPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to generate report: %v\n", err)
+		}
 	}
 }
 
@@ -141,12 +148,13 @@ func printDiffCommits(repo Repository, tagName string, diffSet map[plumbing.Hash
 
 // CompareConfig holds the application configuration from command-line arguments
 type CompareConfig struct {
-	Command   Command
-	RepoPath  string
-	Tag1Name  string
-	Tag2Name  string
-	Directory string
-	Verbose   bool
+	Command    Command
+	RepoPath   string
+	Tag1Name   string
+	Tag2Name   string
+	Directory  string
+	Verbose    bool
+	ReportPath string
 }
 
 // NewCompareConfig parses the compare command flags
@@ -159,6 +167,8 @@ func NewCompareConfig(args []string) (CompareConfig, error) {
 	compareCmd.StringVar(&config.Tag2Name, "tag2", "", "Second tag name to compare")
 	compareCmd.StringVar(&config.Directory, "d", "", "Directory path to filter commits (only commits touching this directory)")
 	compareCmd.BoolVar(&config.Verbose, "v", false, "Verbose output (show list of different commits)")
+	compareCmd.StringVar(&config.ReportPath, "r", "", "Path to save AI-generated markdown report")
+	compareCmd.StringVar(&config.ReportPath, "report", "", "Path to save AI-generated markdown report")
 
 	compareCmd.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: git-tag-similarity compare [options]\n\n")
@@ -169,6 +179,7 @@ func NewCompareConfig(args []string) (CompareConfig, error) {
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -d src/api\n")
+		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -r report.md\n")
 	}
 
 	if err := compareCmd.Parse(args); err != nil {
