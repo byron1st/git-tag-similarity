@@ -79,6 +79,12 @@ git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -r repo
 # Configure AI settings (Claude)
 git-tag-similarity config -provider claude -api-key sk-ant-...
 
+# Configure AI settings (OpenAI)
+git-tag-similarity config -provider openai -api-key sk-...
+
+# Configure AI settings (Gemini)
+git-tag-similarity config -provider gemini -api-key AIza...
+
 # Show help
 git-tag-similarity help
 

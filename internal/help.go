@@ -18,6 +18,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0\n")
 	fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -r report.md\n")
 	fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider claude -api-key sk-ant-...\n")
+	fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider openai -api-key sk-...\n")
 	fmt.Fprintf(os.Stderr, "  git-tag-similarity help\n")
 	fmt.Fprintf(os.Stderr, "  git-tag-similarity version\n")
 	fmt.Fprintf(os.Stderr, "\nFor more information on a command, use:\n")

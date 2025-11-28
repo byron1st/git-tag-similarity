@@ -62,8 +62,19 @@ func GenerateReport(result CompareResult, reportPath string) error {
 		return nil
 	}
 
-	// Generate report content using AI
-	reportContent, err := generateReportWithClaude(result, config)
+	// Generate report content using AI based on provider
+	var reportContent string
+	switch config.Provider {
+	case ProviderClaude:
+		reportContent, err = generateReportWithClaude(result, config)
+	case ProviderOpenAI:
+		reportContent, err = generateReportWithOpenAI(result, config)
+	case ProviderGemini:
+		reportContent, err = generateReportWithGemini(result, config)
+	default:
+		err = fmt.Errorf("unsupported provider: %s", config.Provider)
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Failed to generate AI report: %v\n", err)
 		return nil
@@ -84,46 +95,7 @@ func generateReportWithClaude(result CompareResult, config *AIConfig) (string, e
 	commitData := formatCommitDataForPrompt(result)
 
 	// Create the prompt
-	prompt := fmt.Sprintf(`You are analyzing the differences between two Git tags in a repository.
-
-Repository: %s
-Tag 1: %s
-Tag 2: %s
-%s
-Similarity Score: %.2f%%
-
-Summary:
-- Total commits in [%s]: %d
-- Total commits in [%s]: %d
-- Shared commits: %d
-- Unique to [%s]: %d
-- Unique to [%s]: %d
-
-%s
-
-Please create a detailed Markdown-formatted analysis report that includes:
-
-1. Executive Summary (2-3 sentences about the overall changes)
-2. Similarity Analysis (explain what the %.2f%% similarity means)
-3. Key Changes (analyze the unique commits in each tag)
-4. Impact Assessment (evaluate the significance of the differences)
-5. Recommendations (if applicable)
-
-Format the output as proper Markdown with appropriate headers, lists, and formatting.
-Keep the analysis concise but insightful. Focus on what the differences mean for the project.`,
-		result.Config.RepoPath,
-		result.Config.Tag1Name,
-		result.Config.Tag2Name,
-		formatDirectoryFilter(result.Config.Directory),
-		result.Similarity*100.0,
-		result.Config.Tag1Name, len(result.OnlyInTag1)+len(result.SharedCommits),
-		result.Config.Tag2Name, len(result.OnlyInTag2)+len(result.SharedCommits),
-		len(result.SharedCommits),
-		result.Config.Tag1Name, len(result.OnlyInTag1),
-		result.Config.Tag2Name, len(result.OnlyInTag2),
-		commitData,
-		result.Similarity*100.0,
-	)
+	prompt := buildAnalysisPrompt(result, commitData)
 
 	// Call Claude API
 	return callClaudeAPI(prompt, config.APIKey)
@@ -182,7 +154,7 @@ func callClaudeAPI(prompt string, apiKey string) (string, error) {
 	apiURL := "https://api.anthropic.com/v1/messages"
 
 	reqBody := ClaudeRequest{
-		Model:     "claude-3-5-sonnet-20241022",
+		Model:     "claude-sonnet-4-5-20250929",
 		MaxTokens: 4096,
 		Messages: []ClaudeMessage{
 			{
@@ -236,6 +208,242 @@ func callClaudeAPI(prompt string, apiKey string) (string, error) {
 	}
 
 	return claudeResp.Content[0].Text, nil
+}
+
+// OpenAI API structures
+type OpenAIMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type OpenAIRequest struct {
+	Model    string          `json:"model"`
+	Messages []OpenAIMessage `json:"messages"`
+}
+
+type OpenAIResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	} `json:"error,omitempty"`
+}
+
+// generateReportWithOpenAI calls the OpenAI API to generate a report
+func generateReportWithOpenAI(result CompareResult, config *AIConfig) (string, error) {
+	// Prepare commit data for the prompt
+	commitData := formatCommitDataForPrompt(result)
+
+	// Create the prompt
+	prompt := buildAnalysisPrompt(result, commitData)
+
+	// Call OpenAI API
+	return callOpenAIAPI(prompt, config.APIKey)
+}
+
+// callOpenAIAPI makes a request to the OpenAI API
+func callOpenAIAPI(prompt string, apiKey string) (string, error) {
+	apiURL := "https://api.openai.com/v1/chat/completions"
+
+	reqBody := OpenAIRequest{
+		Model: "gpt-4o",
+		Messages: []OpenAIMessage{
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", errors.Join(ErrAPIRequest, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Join(ErrAPIRequest, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body)))
+	}
+
+	var openaiResp OpenAIResponse
+	if err := json.Unmarshal(body, &openaiResp); err != nil {
+		return "", err
+	}
+
+	if openaiResp.Error != nil {
+		return "", errors.Join(ErrAPIRequest, fmt.Errorf("%s: %s", openaiResp.Error.Type, openaiResp.Error.Message))
+	}
+
+	if len(openaiResp.Choices) == 0 {
+		return "", errors.Join(ErrAPIRequest, fmt.Errorf("no content in response"))
+	}
+
+	return openaiResp.Choices[0].Message.Content, nil
+}
+
+// Gemini API structures
+type GeminiContent struct {
+	Parts []struct {
+		Text string `json:"text"`
+	} `json:"parts"`
+	Role string `json:"role,omitempty"`
+}
+
+type GeminiRequest struct {
+	Contents []GeminiContent `json:"contents"`
+}
+
+type GeminiResponse struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+		} `json:"content"`
+	} `json:"candidates"`
+	Error *struct {
+		Message string `json:"message"`
+		Code    int    `json:"code"`
+	} `json:"error,omitempty"`
+}
+
+// generateReportWithGemini calls the Gemini API to generate a report
+func generateReportWithGemini(result CompareResult, config *AIConfig) (string, error) {
+	// Prepare commit data for the prompt
+	commitData := formatCommitDataForPrompt(result)
+
+	// Create the prompt
+	prompt := buildAnalysisPrompt(result, commitData)
+
+	// Call Gemini API
+	return callGeminiAPI(prompt, config.APIKey)
+}
+
+// callGeminiAPI makes a request to the Gemini API
+func callGeminiAPI(prompt string, apiKey string) (string, error) {
+	apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=%s", apiKey)
+
+	reqBody := GeminiRequest{
+		Contents: []GeminiContent{
+			{
+				Parts: []struct {
+					Text string `json:"text"`
+				}{
+					{Text: prompt},
+				},
+			},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", errors.Join(ErrAPIRequest, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Join(ErrAPIRequest, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body)))
+	}
+
+	var geminiResp GeminiResponse
+	if err := json.Unmarshal(body, &geminiResp); err != nil {
+		return "", err
+	}
+
+	if geminiResp.Error != nil {
+		return "", errors.Join(ErrAPIRequest, fmt.Errorf("code %d: %s", geminiResp.Error.Code, geminiResp.Error.Message))
+	}
+
+	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		return "", errors.Join(ErrAPIRequest, fmt.Errorf("no content in response"))
+	}
+
+	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
+}
+
+// buildAnalysisPrompt creates the common analysis prompt used by all AI providers
+func buildAnalysisPrompt(result CompareResult, commitData string) string {
+	return fmt.Sprintf(`You are analyzing the differences between two Git tags in a repository.
+
+Repository: %s
+Tag 1: %s
+Tag 2: %s
+%s
+Similarity Score: %.2f%%
+
+Summary:
+- Total commits in [%s]: %d
+- Total commits in [%s]: %d
+- Shared commits: %d
+- Unique to [%s]: %d
+- Unique to [%s]: %d
+
+%s
+
+Please create a detailed Markdown-formatted analysis report that includes:
+
+1. Executive Summary (2-3 sentences about the overall changes)
+2. Similarity Analysis (explain what the %.2f%% similarity means)
+3. Key Changes (analyze the unique commits in each tag)
+4. Impact Assessment (evaluate the significance of the differences)
+5. Recommendations (if applicable)
+
+Format the output as proper Markdown with appropriate headers, lists, and formatting.
+Keep the analysis concise but insightful. Focus on what the differences mean for the project.`,
+		result.Config.RepoPath,
+		result.Config.Tag1Name,
+		result.Config.Tag2Name,
+		formatDirectoryFilter(result.Config.Directory),
+		result.Similarity*100.0,
+		result.Config.Tag1Name, len(result.OnlyInTag1)+len(result.SharedCommits),
+		result.Config.Tag2Name, len(result.OnlyInTag2)+len(result.SharedCommits),
+		len(result.SharedCommits),
+		result.Config.Tag1Name, len(result.OnlyInTag1),
+		result.Config.Tag2Name, len(result.OnlyInTag2),
+		commitData,
+		result.Similarity*100.0,
+	)
 }
 
 // GetCommitMessages returns commit messages for a set of commit hashes

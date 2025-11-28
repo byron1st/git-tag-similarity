@@ -24,9 +24,8 @@ type AIProvider string
 
 const (
 	ProviderClaude AIProvider = "claude"
-	// Future providers
-	// ProviderOpenAI AIProvider = "openai"
-	// ProviderGemini AIProvider = "gemini"
+	ProviderOpenAI AIProvider = "openai"
+	ProviderGemini AIProvider = "gemini"
 )
 
 // AIConfig stores AI-related configuration
@@ -94,8 +93,11 @@ func SaveConfig(config *AIConfig) error {
 
 // Validate checks if the config is valid
 func (c *AIConfig) Validate() error {
-	if c.Provider != ProviderClaude {
-		return errors.Join(ErrInvalidProvider, fmt.Errorf("unsupported provider: %s (currently only 'claude' is supported)", c.Provider))
+	switch c.Provider {
+	case ProviderClaude, ProviderOpenAI, ProviderGemini:
+		// Valid provider
+	default:
+		return errors.Join(ErrInvalidProvider, fmt.Errorf("unsupported provider: %s (supported: claude, openai, gemini)", c.Provider))
 	}
 
 	if c.APIKey == "" {
@@ -116,7 +118,7 @@ func NewConfigCommandConfig(args []string) (ConfigCommandConfig, error) {
 	config := ConfigCommandConfig{}
 
 	configCmd := flag.NewFlagSet("config", flag.ExitOnError)
-	configCmd.StringVar(&config.Provider, "provider", "claude", "AI provider (currently only 'claude' is supported)")
+	configCmd.StringVar(&config.Provider, "provider", "claude", "AI provider (claude, openai, or gemini)")
 	configCmd.StringVar(&config.APIKey, "api-key", "", "API key for the AI provider")
 
 	configCmd.Usage = func() {
@@ -126,8 +128,12 @@ func NewConfigCommandConfig(args []string) (ConfigCommandConfig, error) {
 		configCmd.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider claude -api-key sk-ant-...\n")
+		fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider openai -api-key sk-...\n")
+		fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider gemini -api-key AIza...\n")
 		fmt.Fprintf(os.Stderr, "\nSupported providers:\n")
 		fmt.Fprintf(os.Stderr, "  claude    Anthropic Claude (default)\n")
+		fmt.Fprintf(os.Stderr, "  openai    OpenAI GPT\n")
+		fmt.Fprintf(os.Stderr, "  gemini    Google Gemini\n")
 		fmt.Fprintf(os.Stderr, "\nNote: Your API key is stored in ~/.git-tag-similarity/config.json\n")
 	}
 
@@ -140,8 +146,8 @@ func NewConfigCommandConfig(args []string) (ConfigCommandConfig, error) {
 
 // Validate checks if the config command configuration is valid
 func (c *ConfigCommandConfig) Validate() error {
-	if c.Provider != "claude" {
-		return errors.Join(ErrInvalidProvider, fmt.Errorf("unsupported provider: %s", c.Provider))
+	if c.Provider != "claude" && c.Provider != "openai" && c.Provider != "gemini" {
+		return errors.Join(ErrInvalidProvider, fmt.Errorf("unsupported provider: %s (supported: claude, openai, gemini)", c.Provider))
 	}
 
 	if c.APIKey == "" {
