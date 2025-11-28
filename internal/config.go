@@ -32,6 +32,7 @@ const (
 type AIConfig struct {
 	Provider AIProvider `json:"provider"`
 	APIKey   string     `json:"api_key"`
+	Model    string     `json:"model"`
 }
 
 // GetConfigPath returns the path to the config file
@@ -111,6 +112,21 @@ func (c *AIConfig) Validate() error {
 type ConfigCommandConfig struct {
 	Provider string
 	APIKey   string
+	Model    string
+}
+
+// GetDefaultModel returns the default model for a given provider
+func GetDefaultModel(provider string) string {
+	switch provider {
+	case "claude":
+		return "claude-haiku-4-5-20250929"
+	case "openai":
+		return "gpt-4o-mini"
+	case "gemini":
+		return "gemini-2.5-flash"
+	default:
+		return ""
+	}
 }
 
 // NewConfigCommandConfig parses the config command flags
@@ -120,6 +136,7 @@ func NewConfigCommandConfig(args []string) (ConfigCommandConfig, error) {
 	configCmd := flag.NewFlagSet("config", flag.ExitOnError)
 	configCmd.StringVar(&config.Provider, "provider", "claude", "AI provider (claude, openai, or gemini)")
 	configCmd.StringVar(&config.APIKey, "api-key", "", "API key for the AI provider")
+	configCmd.StringVar(&config.Model, "model", "", "AI model to use (defaults to provider's recommended model)")
 
 	configCmd.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: git-tag-similarity config [options]\n\n")
@@ -130,10 +147,15 @@ func NewConfigCommandConfig(args []string) (ConfigCommandConfig, error) {
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider claude -api-key sk-ant-...\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider openai -api-key sk-...\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider gemini -api-key AIza...\n")
+		fmt.Fprintf(os.Stderr, "  git-tag-similarity config -provider claude -api-key sk-ant-... -model claude-sonnet-4-5-20250929\n")
 		fmt.Fprintf(os.Stderr, "\nSupported providers:\n")
 		fmt.Fprintf(os.Stderr, "  claude    Anthropic Claude (default)\n")
 		fmt.Fprintf(os.Stderr, "  openai    OpenAI GPT\n")
 		fmt.Fprintf(os.Stderr, "  gemini    Google Gemini\n")
+		fmt.Fprintf(os.Stderr, "\nDefault models:\n")
+		fmt.Fprintf(os.Stderr, "  claude    claude-haiku-4-5-20250929\n")
+		fmt.Fprintf(os.Stderr, "  openai    gpt-4o-mini\n")
+		fmt.Fprintf(os.Stderr, "  gemini    gemini-2.5-flash\n")
 		fmt.Fprintf(os.Stderr, "\nNote: Your API key is stored in ~/.git-tag-similarity/config.json\n")
 	}
 
@@ -163,9 +185,16 @@ func RunConfigCommand(cmdConfig ConfigCommandConfig) error {
 		return err
 	}
 
+	// Use default model if not specified
+	model := cmdConfig.Model
+	if model == "" {
+		model = GetDefaultModel(cmdConfig.Provider)
+	}
+
 	aiConfig := &AIConfig{
 		Provider: AIProvider(cmdConfig.Provider),
 		APIKey:   cmdConfig.APIKey,
+		Model:    model,
 	}
 
 	if err := SaveConfig(aiConfig); err != nil {
@@ -174,6 +203,7 @@ func RunConfigCommand(cmdConfig ConfigCommandConfig) error {
 
 	fmt.Printf("Configuration saved successfully!\n")
 	fmt.Printf("Provider: %s\n", aiConfig.Provider)
+	fmt.Printf("Model: %s\n", aiConfig.Model)
 	fmt.Printf("API Key: %s...%s\n", aiConfig.APIKey[:8], aiConfig.APIKey[len(aiConfig.APIKey)-4:])
 
 	return nil

@@ -76,11 +76,11 @@ git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -d src/
 # Compare with AI-generated markdown report
 git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -r report.md
 
-# Configure AI settings (Claude)
+# Configure AI settings (Claude with default model)
 git-tag-similarity config -provider claude -api-key sk-ant-...
 
-# Configure AI settings (OpenAI)
-git-tag-similarity config -provider openai -api-key sk-...
+# Configure AI settings (OpenAI with custom model)
+git-tag-similarity config -provider openai -api-key sk-... -model gpt-4o
 
 # Configure AI settings (Gemini)
 git-tag-similarity config -provider gemini -api-key AIza...

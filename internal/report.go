@@ -98,7 +98,7 @@ func generateReportWithClaude(result CompareResult, config *AIConfig) (string, e
 	prompt := buildAnalysisPrompt(result, commitData)
 
 	// Call Claude API
-	return callClaudeAPI(prompt, config.APIKey)
+	return callClaudeAPI(prompt, config.APIKey, config.Model)
 }
 
 // formatDirectoryFilter formats the directory filter for display
@@ -150,11 +150,11 @@ func formatCommitDataForPrompt(result CompareResult) string {
 }
 
 // callClaudeAPI makes a request to the Claude API
-func callClaudeAPI(prompt string, apiKey string) (string, error) {
+func callClaudeAPI(prompt string, apiKey string, model string) (string, error) {
 	apiURL := "https://api.anthropic.com/v1/messages"
 
 	reqBody := ClaudeRequest{
-		Model:     "claude-haiku-4-5-20250929",
+		Model:     model,
 		MaxTokens: 4096,
 		Messages: []ClaudeMessage{
 			{
@@ -242,15 +242,15 @@ func generateReportWithOpenAI(result CompareResult, config *AIConfig) (string, e
 	prompt := buildAnalysisPrompt(result, commitData)
 
 	// Call OpenAI API
-	return callOpenAIAPI(prompt, config.APIKey)
+	return callOpenAIAPI(prompt, config.APIKey, config.Model)
 }
 
 // callOpenAIAPI makes a request to the OpenAI API
-func callOpenAIAPI(prompt string, apiKey string) (string, error) {
+func callOpenAIAPI(prompt string, apiKey string, model string) (string, error) {
 	apiURL := "https://api.openai.com/v1/chat/completions"
 
 	reqBody := OpenAIRequest{
-		Model: "gpt-4o-mini",
+		Model: model,
 		Messages: []OpenAIMessage{
 			{
 				Role:    "user",
@@ -339,12 +339,12 @@ func generateReportWithGemini(result CompareResult, config *AIConfig) (string, e
 	prompt := buildAnalysisPrompt(result, commitData)
 
 	// Call Gemini API
-	return callGeminiAPI(prompt, config.APIKey)
+	return callGeminiAPI(prompt, config.APIKey, config.Model)
 }
 
 // callGeminiAPI makes a request to the Gemini API
-func callGeminiAPI(prompt string, apiKey string) (string, error) {
-	apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=%s", apiKey)
+func callGeminiAPI(prompt string, apiKey string, model string) (string, error) {
+	apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, apiKey)
 
 	reqBody := GeminiRequest{
 		Contents: []GeminiContent{
