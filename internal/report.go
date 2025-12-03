@@ -409,12 +409,17 @@ func buildAnalysisPrompt(result CompareResult, commitData string) string {
 		diffSection = fmt.Sprintf("\n## File Changes (Diff Summary)\n\n```\n%s\n```\n", result.DiffStat)
 	}
 
+	scopeNote := ""
+	if result.Config.Directory != "" {
+		scopeNote = fmt.Sprintf("\n**IMPORTANT: This analysis is scoped to the '%s' directory only. Only commits and file changes affecting this directory are included. Do not make assumptions about changes outside this directory.**\n", result.Config.Directory)
+	}
+
 	return fmt.Sprintf(`You are analyzing the differences between two Git tags in a repository.
 
 Repository: %s
 Tag 1: %s
 Tag 2: %s
-%s
+%s%s
 Similarity Score: %.2f%%
 
 Summary:
@@ -436,11 +441,13 @@ Please create a detailed Markdown-formatted analysis report that includes:
 
 Format the output as proper Markdown with appropriate headers, lists, and formatting.
 Keep the analysis concise but insightful. Focus on what the differences mean for the project.
-Pay special attention to the file changes in the diff summary to understand the actual code modifications.`,
+Pay special attention to the file changes in the diff summary to understand the actual code modifications.
+%s`,
 		result.Config.RepoPath,
 		result.Config.Tag1Name,
 		result.Config.Tag2Name,
 		formatDirectoryFilter(result.Config.Directory),
+		scopeNote,
 		result.Similarity*100.0,
 		result.Config.Tag1Name, len(result.OnlyInTag1)+len(result.SharedCommits),
 		result.Config.Tag2Name, len(result.OnlyInTag2)+len(result.SharedCommits),
@@ -450,7 +457,16 @@ Pay special attention to the file changes in the diff summary to understand the 
 		commitData,
 		diffSection,
 		result.Similarity*100.0,
+		getScopeReminder(result.Config.Directory),
 	)
+}
+
+// getScopeReminder returns a reminder about scope limitation when directory filtering is active
+func getScopeReminder(directory string) string {
+	if directory != "" {
+		return fmt.Sprintf("\nREMINDER: Your analysis must be limited to changes within the '%s' directory only.", directory)
+	}
+	return ""
 }
 
 // GetCommitMessages returns commit messages for a set of commit hashes

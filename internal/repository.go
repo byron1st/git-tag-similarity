@@ -157,8 +157,8 @@ func (gr *GitRepository) GetDiffBetweenTags(tag1 *plumbing.Reference, tag2 *plum
 		return "", errors.Join(ErrGetCommit, err)
 	}
 
-	// Use git diff command with stat and shortstat for summary
-	// Command: git diff <tag1> <tag2> -- <directory>
+	// Use git diff command with stat for summary
+	// Command: git diff <commit1> <commit2> [-- <directory>]
 	args := []string{"diff", "--stat", "--stat-width=120", commit1.Hash.String(), commit2.Hash.String()}
 	if directory != "" {
 		args = append(args, "--", directory)
