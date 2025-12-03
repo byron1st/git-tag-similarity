@@ -1,3 +1,8 @@
+# Release v1.2.0
+
+- feat: add AI-powered report generation with multi-provider support (#13) (90804fa)
+- docs: update README.md file to reflect the current status (336c465)
+
 # Release v1.1.1
 
 - refactor: simplify version command by removing unreliable commit info (#11) (0437163)
