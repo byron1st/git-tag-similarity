@@ -119,11 +119,11 @@ type ConfigCommandConfig struct {
 func GetDefaultModel(provider string) string {
 	switch provider {
 	case "claude":
-		return "claude-haiku-4-5-20250929"
+		return "claude-haiku-4-5"
 	case "openai":
-		return "gpt-4o-mini"
+		return "gpt-5.1-codex-mini"
 	case "gemini":
-		return "gemini-2.5-flash"
+		return "gemini-flash-latest"
 	default:
 		return ""
 	}
@@ -153,9 +153,9 @@ func NewConfigCommandConfig(args []string) (ConfigCommandConfig, error) {
 		fmt.Fprintf(os.Stderr, "  openai    OpenAI GPT\n")
 		fmt.Fprintf(os.Stderr, "  gemini    Google Gemini\n")
 		fmt.Fprintf(os.Stderr, "\nDefault models:\n")
-		fmt.Fprintf(os.Stderr, "  claude    claude-haiku-4-5-20250929\n")
-		fmt.Fprintf(os.Stderr, "  openai    gpt-4o-mini\n")
-		fmt.Fprintf(os.Stderr, "  gemini    gemini-2.5-flash\n")
+		fmt.Fprintf(os.Stderr, "  claude    claude-haiku-4-5\n")
+		fmt.Fprintf(os.Stderr, "  openai    gpt-5.1-codex-mini\n")
+		fmt.Fprintf(os.Stderr, "  gemini    gemini-flash-latest\n")
 		fmt.Fprintf(os.Stderr, "\nNote: Your API key is stored in ~/.git-tag-similarity/config.json\n")
 	}
 
