@@ -16,6 +16,7 @@ var (
 	ErrOpenRepository  = errors.New("failed to open repository")
 	ErrFetchTags       = errors.New("failed to fetch tags")
 	ErrGetCommit       = errors.New("failed to get commit")
+	ErrDereferenceTag  = errors.New("failed to dereference tag")
 	ErrTraverseCommits = errors.New("failed to traverse commits")
 )
 
@@ -46,6 +47,28 @@ func NewGitRepository(path string) (*GitRepository, error) {
 	}, nil
 }
 
+// resolveTagToCommit resolves a tag reference to its commit object.
+// Handles both annotated tags (tag objects) and lightweight tags (direct commit refs).
+func (gr *GitRepository) resolveTagToCommit(ref *plumbing.Reference) (*object.Commit, error) {
+	// Try to get tag object first (annotated tag)
+	tagObj, err := gr.repo.TagObject(ref.Hash())
+	if err == nil {
+		// Annotated tag - dereference to commit
+		commit, err := tagObj.Commit()
+		if err != nil {
+			return nil, errors.Join(ErrDereferenceTag, err)
+		}
+		return commit, nil
+	}
+
+	// Not a tag object - try commit directly (lightweight tag)
+	commit, err := gr.repo.CommitObject(ref.Hash())
+	if err != nil {
+		return nil, errors.Join(ErrDereferenceTag, err)
+	}
+	return commit, nil
+}
+
 // FetchAllTags retrieves all tag references from the repository
 func (gr *GitRepository) FetchAllTags() ([]*plumbing.Reference, error) {
 	tagRefs, err := gr.repo.Tags()
@@ -65,14 +88,15 @@ func (gr *GitRepository) FetchAllTags() ([]*plumbing.Reference, error) {
 	return refs, nil
 }
 
-// GetCommitSetForTag traverses the history of a tag and returns all parent commit hashes
+// GetCommitSetForTag traverses the history of a tag and returns all parent commit hashes.
+// Handles both annotated tags (tag objects) and lightweight tags (direct commit refs).
 func (gr *GitRepository) GetCommitSetForTag(ref *plumbing.Reference) (map[plumbing.Hash]struct{}, error) {
 	commitSet := make(map[plumbing.Hash]struct{})
 
-	// Get the commit object that the tag points to (handles annotated tags automatically)
-	commit, err := gr.repo.CommitObject(ref.Hash())
+	// Resolve tag to commit (handles both annotated and lightweight tags)
+	commit, err := gr.resolveTagToCommit(ref)
 	if err != nil {
-		return nil, errors.Join(ErrGetCommit, err)
+		return nil, err // Error already wrapped by helper
 	}
 
 	// Traverse all parent commits (similar to git log)
@@ -96,14 +120,15 @@ func (gr *GitRepository) GetCommitSetForTag(ref *plumbing.Reference) (map[plumbi
 
 // GetCommitSetForTagFilteredByDirectory traverses the history of a tag and returns commits
 // that touch files in the specified directory.
+// Handles both annotated tags (tag objects) and lightweight tags (direct commit refs).
 // Uses native git log command for performance (go-git's PathFilter is extremely slow).
 func (gr *GitRepository) GetCommitSetForTagFilteredByDirectory(ref *plumbing.Reference, directory string) (map[plumbing.Hash]struct{}, error) {
 	commitSet := make(map[plumbing.Hash]struct{})
 
-	// Get the commit object that the tag points to (handles annotated tags automatically)
-	commit, err := gr.repo.CommitObject(ref.Hash())
+	// Resolve tag to commit (handles both annotated and lightweight tags)
+	commit, err := gr.resolveTagToCommit(ref)
 	if err != nil {
-		return nil, errors.Join(ErrGetCommit, err)
+		return nil, err // Error already wrapped by helper
 	}
 
 	// Use native git log with path filtering (orders of magnitude faster than go-git's PathFilter)
@@ -143,18 +168,19 @@ func (gr *GitRepository) GetCommitObject(hash plumbing.Hash) (*object.Commit, er
 	return commit, nil
 }
 
-// GetDiffBetweenTags returns the diff between two tags
-// If directory is specified, only shows diff for files in that directory
+// GetDiffBetweenTags returns the diff between two tags.
+// Handles both annotated tags (tag objects) and lightweight tags (direct commit refs).
+// If directory is specified, only shows diff for files in that directory.
 func (gr *GitRepository) GetDiffBetweenTags(tag1 *plumbing.Reference, tag2 *plumbing.Reference, directory string) (string, error) {
-	// Get commit objects for both tags
-	commit1, err := gr.repo.CommitObject(tag1.Hash())
+	// Resolve tags to commits (handles both annotated and lightweight tags)
+	commit1, err := gr.resolveTagToCommit(tag1)
 	if err != nil {
-		return "", errors.Join(ErrGetCommit, err)
+		return "", err // Error already wrapped by helper
 	}
 
-	commit2, err := gr.repo.CommitObject(tag2.Hash())
+	commit2, err := gr.resolveTagToCommit(tag2)
 	if err != nil {
-		return "", errors.Join(ErrGetCommit, err)
+		return "", err // Error already wrapped by helper
 	}
 
 	// Use git diff command with stat for summary

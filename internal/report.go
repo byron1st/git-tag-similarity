@@ -46,7 +46,10 @@ type ClaudeResponse struct {
 
 // GenerateReport creates an AI-generated markdown report analyzing the tag differences
 func GenerateReport(result CompareResult, reportPath string) error {
+	fmt.Println("\nGenerating AI-powered report...")
+
 	// Load config
+	fmt.Println("Loading AI configuration...")
 	config, err := LoadConfig()
 	if err != nil {
 		if errors.Is(err, ErrConfigNotFound) {
@@ -61,6 +64,8 @@ func GenerateReport(result CompareResult, reportPath string) error {
 		fmt.Fprintf(os.Stderr, "Warning: Invalid AI config. Report generation skipped. Error: %v\n", err)
 		return nil
 	}
+
+	fmt.Printf("Using %s AI provider with model: %s\n", config.Provider, config.Model)
 
 	// Generate report content using AI based on provider
 	var reportContent string
@@ -81,6 +86,7 @@ func GenerateReport(result CompareResult, reportPath string) error {
 	}
 
 	// Write report to file
+	fmt.Printf("Writing report to file: %s\n", reportPath)
 	if err := os.WriteFile(reportPath, []byte(reportContent), 0644); err != nil {
 		return errors.Join(ErrReportWrite, err)
 	}
@@ -92,12 +98,14 @@ func GenerateReport(result CompareResult, reportPath string) error {
 // generateReportWithClaude calls the Claude API to generate a report
 func generateReportWithClaude(result CompareResult, config *AIConfig) (string, error) {
 	// Prepare commit data for the prompt
+	fmt.Println("Preparing commit data for analysis...")
 	commitData := formatCommitDataForPrompt(result)
 
 	// Create the prompt
 	prompt := buildAnalysisPrompt(result, commitData)
 
 	// Call Claude API
+	fmt.Println("Calling Claude API to generate report (this may take a moment)...")
 	return callClaudeAPI(prompt, config.APIKey, config.Model)
 }
 
@@ -207,6 +215,7 @@ func callClaudeAPI(prompt string, apiKey string, model string) (string, error) {
 		return "", errors.Join(ErrAPIRequest, fmt.Errorf("no content in response"))
 	}
 
+	fmt.Println("Successfully received response from Claude API")
 	return claudeResp.Content[0].Text, nil
 }
 
@@ -236,12 +245,14 @@ type OpenAIResponse struct {
 // generateReportWithOpenAI calls the OpenAI API to generate a report
 func generateReportWithOpenAI(result CompareResult, config *AIConfig) (string, error) {
 	// Prepare commit data for the prompt
+	fmt.Println("Preparing commit data for analysis...")
 	commitData := formatCommitDataForPrompt(result)
 
 	// Create the prompt
 	prompt := buildAnalysisPrompt(result, commitData)
 
 	// Call OpenAI API
+	fmt.Println("Calling OpenAI API to generate report (this may take a moment)...")
 	return callOpenAIAPI(prompt, config.APIKey, config.Model)
 }
 
@@ -301,6 +312,7 @@ func callOpenAIAPI(prompt string, apiKey string, model string) (string, error) {
 		return "", errors.Join(ErrAPIRequest, fmt.Errorf("no content in response"))
 	}
 
+	fmt.Println("Successfully received response from OpenAI API")
 	return openaiResp.Choices[0].Message.Content, nil
 }
 
@@ -333,12 +345,14 @@ type GeminiResponse struct {
 // generateReportWithGemini calls the Gemini API to generate a report
 func generateReportWithGemini(result CompareResult, config *AIConfig) (string, error) {
 	// Prepare commit data for the prompt
+	fmt.Println("Preparing commit data for analysis...")
 	commitData := formatCommitDataForPrompt(result)
 
 	// Create the prompt
 	prompt := buildAnalysisPrompt(result, commitData)
 
 	// Call Gemini API
+	fmt.Println("Calling Gemini API to generate report (this may take a moment)...")
 	return callGeminiAPI(prompt, config.APIKey, config.Model)
 }
 
@@ -399,6 +413,7 @@ func callGeminiAPI(prompt string, apiKey string, model string) (string, error) {
 		return "", errors.Join(ErrAPIRequest, fmt.Errorf("no content in response"))
 	}
 
+	fmt.Println("Successfully received response from Gemini API")
 	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
