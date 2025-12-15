@@ -24,12 +24,10 @@ This application compares two Git tags in a repository and calculates their simi
 git-tag-similarity/
 ├── main.go                    # Main entry point (minimal, orchestration only)
 ├── internal/                  # Internal package (all implementation details)
-│   ├── cli.go                # Command parsing (compare, config, help, version)
+│   ├── cli.go                # Command parsing (compare, help, version)
 │   ├── compare.go            # Compare command logic and configuration
 │   ├── compare_test.go       # Compare logic tests
-│   ├── config.go             # AI configuration management
 │   ├── help.go               # Usage and help message printing
-│   ├── report.go             # AI-powered report generation
 │   ├── repository.go         # Repository interface + GitRepository implementation
 │   ├── repository_test.go    # Repository unit tests
 │   ├── similarity.go         # Jaccard similarity calculation
@@ -57,8 +55,7 @@ git-tag-similarity/
 The application uses a command-based interface (like git, docker, kubectl):
 
 **Commands:**
-- `compare`: Compare two Git tags (requires: `-repo`, `-tag1`, `-tag2`; optional: `-v`, `-d`, `-r`/`--report`)
-- `config`: Configure AI settings for report generation (requires: `-provider`, `-api-key`)
+- `compare`: Compare two Git tags (requires: `-repo`, `-tag1`, `-tag2`; optional: `-v`, `-d`)
 - `help`: Show usage information
 - `version`: Show version info (using embedded VCS data)
 
@@ -72,18 +69,6 @@ git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v
 
 # Compare with directory filter (only commits touching specific directory)
 git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -d src/api
-
-# Compare with AI-generated markdown report
-git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -r report.md
-
-# Configure AI settings (Claude with default model)
-git-tag-similarity config -provider claude -api-key sk-ant-...
-
-# Configure AI settings (OpenAI with custom model)
-git-tag-similarity config -provider openai -api-key sk-... -model gpt-4o
-
-# Configure AI settings (Gemini)
-git-tag-similarity config -provider gemini -api-key AIza...
 
 # Show help
 git-tag-similarity help
@@ -102,6 +87,3 @@ git-tag-similarity version
 6. **Separation of concerns**: CLI parsing, compare logic, and help output are in separate files
 7. **CI/CD automation**: GitHub Actions for PR validation and automated releases
 8. **Directory filtering**: Optional directory filter for comparing tags based on specific paths
-9. **AI-powered reports**: Optional AI-generated markdown reports analyzing tag differences
-10. **Configuration management**: Storage of AI API keys in `~/.git-tag-similarity/config.json`
-11. **Graceful degradation**: Report generation fails gracefully with warnings if config is missing

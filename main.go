@@ -26,17 +26,6 @@ func main() {
 	case internal.VersionCommand:
 		internal.PrintVersion()
 		os.Exit(0)
-	case internal.ConfigCommand:
-		config, err := internal.NewConfigCommandConfig(os.Args[2:])
-		if err != nil {
-			log.Fatalf("Failed to parse config command: %v", err)
-			os.Exit(1)
-		}
-		if err := internal.RunConfigCommand(config); err != nil {
-			log.Fatalf("Failed to configure: %v", err)
-			os.Exit(1)
-		}
-		os.Exit(0)
 	case internal.CompareCommand:
 		config, err := internal.NewCompareConfig(os.Args[2:])
 		if err != nil {

@@ -36,13 +36,6 @@ func PrintCompareResult(result CompareResult) {
 		printDiffCommits(result.Repo, result.Config.Tag1Name, result.OnlyInTag1)
 		printDiffCommits(result.Repo, result.Config.Tag2Name, result.OnlyInTag2)
 	}
-
-	// Generate AI report if report path is specified
-	if result.Config.ReportPath != "" {
-		if err := GenerateReport(result, result.Config.ReportPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to generate report: %v\n", err)
-		}
-	}
 }
 
 func Compare(config CompareConfig) (CompareResult, error) {
@@ -124,21 +117,6 @@ func Compare(config CompareConfig) (CompareResult, error) {
 		}
 	}
 
-	// 8. Store tag references for diff generation
-	result.Tag1Ref = tag1Ref
-	result.Tag2Ref = tag2Ref
-
-	// 9. Get diff stat between tags (for AI report generation)
-	if config.ReportPath != "" {
-		diffStat, err := repo.GetDiffBetweenTags(tag1Ref, tag2Ref, config.Directory)
-		if err != nil {
-			// Don't fail the whole operation if diff fails, just log it
-			fmt.Fprintf(os.Stderr, "Warning: Failed to get diff stat: %v\n", err)
-		} else {
-			result.DiffStat = diffStat
-		}
-	}
-
 	return result, nil
 }
 
@@ -163,13 +141,12 @@ func printDiffCommits(repo Repository, tagName string, diffSet map[plumbing.Hash
 
 // CompareConfig holds the application configuration from command-line arguments
 type CompareConfig struct {
-	Command    Command
-	RepoPath   string
-	Tag1Name   string
-	Tag2Name   string
-	Directory  string
-	Verbose    bool
-	ReportPath string
+	Command   Command
+	RepoPath  string
+	Tag1Name  string
+	Tag2Name  string
+	Directory string
+	Verbose   bool
 }
 
 // NewCompareConfig parses the compare command flags
@@ -182,8 +159,6 @@ func NewCompareConfig(args []string) (CompareConfig, error) {
 	compareCmd.StringVar(&config.Tag2Name, "tag2", "", "Second tag name to compare")
 	compareCmd.StringVar(&config.Directory, "d", "", "Directory path to filter commits (only commits touching this directory)")
 	compareCmd.BoolVar(&config.Verbose, "v", false, "Verbose output (show list of different commits)")
-	compareCmd.StringVar(&config.ReportPath, "r", "", "Path to save AI-generated markdown report")
-	compareCmd.StringVar(&config.ReportPath, "report", "", "Path to save AI-generated markdown report")
 
 	compareCmd.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: git-tag-similarity compare [options]\n\n")
@@ -194,7 +169,6 @@ func NewCompareConfig(args []string) (CompareConfig, error) {
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v\n")
 		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -d src/api\n")
-		fmt.Fprintf(os.Stderr, "  git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -r report.md\n")
 	}
 
 	if err := compareCmd.Parse(args); err != nil {
@@ -292,11 +266,8 @@ func (c *CompareConfig) GetTagReference(repo Repository, tagName string) (*plumb
 type CompareResult struct {
 	Repo          Repository
 	Config        CompareConfig
-	Tag1Ref       *plumbing.Reference
-	Tag2Ref       *plumbing.Reference
 	Similarity    float64
 	SharedCommits map[plumbing.Hash]struct{}
 	OnlyInTag1    map[plumbing.Hash]struct{}
 	OnlyInTag2    map[plumbing.Hash]struct{}
-	DiffStat      string
 }

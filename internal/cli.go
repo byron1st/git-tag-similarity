@@ -21,7 +21,6 @@ type Command string
 
 const (
 	CompareCommand Command = "compare"
-	ConfigCommand  Command = "config"
 	HelpCommand    Command = "help"
 	VersionCommand Command = "version"
 )
@@ -36,8 +35,6 @@ func ParseCommand(args []string) (Command, error) {
 	switch command {
 	case "compare":
 		return CompareCommand, nil
-	case "config":
-		return ConfigCommand, nil
 	case "help":
 		return HelpCommand, nil
 	case "version":
