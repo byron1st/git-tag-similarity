@@ -9,7 +9,6 @@ A Go application that compares two Git tags and calculates their similarity base
 - Filter comparisons by specific directories or paths
 - Show commits unique to each tag
 - Display detailed commit information
-- AI-powered markdown report generation (supports Claude, OpenAI, Gemini)
 - Automated CI/CD with GitHub Actions
 
 ## Installation
@@ -36,7 +35,7 @@ make install
 
 ## Usage
 
-The application uses a command-based interface with four commands: `compare`, `config`, `help`, and `version`.
+The application uses a command-based interface with three commands: `compare`, `help`, and `version`.
 
 ### Compare Two Tags
 
@@ -50,29 +49,9 @@ git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v
 # Compare with directory filter (only commits touching specific directory)
 git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -d src/api
 
-# Generate AI-powered markdown report
-git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -r report.md
-
 # Combine verbose and directory filter
 git-tag-similarity compare -repo /path/to/repo -tag1 v1.0.0 -tag2 v2.0.0 -v -d internal
 ```
-
-### Configure AI Settings
-
-Before using the AI report generation feature, you need to configure your AI provider settings:
-
-```bash
-# Configure Claude (default model: claude-sonnet-4-5-20250929)
-git-tag-similarity config -provider claude -api-key sk-ant-...
-
-# Configure OpenAI with custom model
-git-tag-similarity config -provider openai -api-key sk-... -model gpt-4o
-
-# Configure Gemini (default model: gemini-2.0-flash-001)
-git-tag-similarity config -provider gemini -api-key AIza...
-```
-
-Configuration is stored in `~/.git-tag-similarity/config.json` and will be used for all subsequent report generations.
 
 ### Show Help
 
@@ -92,7 +71,6 @@ git-tag-similarity version
 
 ```bash
 git-tag-similarity compare -h
-git-tag-similarity config -h
 ```
 
 ### Output Examples
@@ -214,12 +192,10 @@ git-tag-similarity version v1.0.0+dirty
 git-tag-similarity/
 ├── main.go                    # Main entry point (minimal, orchestration only)
 ├── internal/                  # Internal package (all implementation details)
-│   ├── cli.go                # Command parsing (compare, config, help, version)
+│   ├── cli.go                # Command parsing (compare, help, version)
 │   ├── compare.go            # Compare command logic and configuration
 │   ├── compare_test.go       # Compare logic tests
-│   ├── config.go             # AI configuration management
 │   ├── help.go               # Usage and help message printing
-│   ├── report.go             # AI-powered report generation
 │   ├── repository.go         # Repository interface + GitRepository implementation
 │   ├── repository_test.go    # Repository unit tests
 │   ├── similarity.go         # Jaccard similarity calculation
@@ -260,9 +236,6 @@ go test -v ./...
 - **Automatic VCS stamping**: Version info from `runtime/debug.ReadBuildInfo()`
 - **Standard Go project layout**: Code in `internal/` package, entry point in root
 - **Separation of concerns**: CLI parsing, compare logic, and help output in separate files
-- **AI-powered reports**: Optional AI-generated markdown reports analyzing tag differences
-- **Configuration management**: Storage of AI API keys in `~/.git-tag-similarity/config.json`
-- **Graceful degradation**: Report generation fails gracefully with warnings if config is missing
 - **CI/CD automation**: GitHub Actions for PR validation and automated releases
 
 ## License
